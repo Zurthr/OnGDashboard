@@ -1,44 +1,6 @@
 <template>
   <div class="dashboard-wrapper">
     <div class="container">
-      
-      <!-- Top Control Bar (Scenario Dropdown Selector) -->
-      <div class="control-panel">
-        <div class="selector-container">
-          <label for="scenario-select" class="selector-label">Select Scenario ID</label>
-          <div class="select-controls-wrapper">
-            <div class="custom-select-wrapper">
-              <select 
-                id="scenario-select" 
-                v-model="selectedId" 
-                @change="onScenarioChange"
-                class="scenario-select"
-                :disabled="store.loadingDetails || store.loadingScenarios"
-              >
-                <option v-for="id in store.scenarios" :key="id" :value="id">
-                  Scenario #{{ id }}
-                </option>
-              </select>
-              <div class="select-arrow">
-                <Icon name="heroicons:chevron-down-20-solid" />
-              </div>
-            </div>
-
-            <!-- Loading Indicator -->
-            <transition name="fade">
-              <div v-if="store.loadingDetails || store.loadingScenarios" class="mini-loader">
-                <div class="spinner"></div>
-                <span class="loading-text">Fetching scenario data...</span>
-              </div>
-            </transition>
-          </div>
-          
-          <div v-if="store.error" class="error-msg">
-            <Icon name="heroicons:exclamation-circle-16-solid" class="error-icon" />
-            <span>{{ store.error }}</span>
-          </div>
-        </div>
-      </div>
 
       <!-- ===== COMPARE RESULTS SECTION ===== -->
       <div class="compare-results-section">
@@ -362,7 +324,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useVedaStore } from '~/stores/vedaStore'
 
 // Title SEO meta tags
@@ -374,16 +336,9 @@ useHead({
 })
 
 const store = useVedaStore()
-const selectedId = ref<number | null>(null)
 const copied = ref(false)
 const devToolsOpen = ref(false)
 
-// Keep local selected id in sync with store
-watch(() => store.selectedScenarioId, (newVal) => {
-  if (newVal !== null) {
-    selectedId.value = newVal
-  }
-})
 
 // Compute formatted JSON string for display
 const formattedJson = computed(() => {
@@ -412,12 +367,6 @@ const formatCurrency = (val: number) => {
 const formatCostBasisTotal = (val: number) => {
   if (val === 56723100) return '56,7231,00'
   return formatCurrency(val)
-}
-
-const onScenarioChange = () => {
-  if (selectedId.value !== null) {
-    store.selectScenario(selectedId.value)
-  }
 }
 
 // Severity badge helpers based on deviation %
@@ -460,7 +409,7 @@ onMounted(async () => {
    ============================================= */
 .dashboard-wrapper {
   min-height: 100vh;
-  padding: 60px 40px 80px;
+  padding: 32px 40px 80px;
   background-color: #f4f4f0;
 }
 

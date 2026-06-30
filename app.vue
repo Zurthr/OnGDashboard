@@ -1,13 +1,19 @@
 <template>
   <div>
-    <NuxtPage />
+    <StickyNav />
+    <div class="page-offset">
+      <NuxtPage />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-// Main root entry point for Nuxt 3 application
+import StickyNav from '~/components/StickyNav.vue'
 </script>
 
 <style>
-/* Global resets or overrides if needed */
+/* Push page content below the sticky bar height (~58px) */
+.page-offset {
+  padding-top: 58px;
+}
 </style>
