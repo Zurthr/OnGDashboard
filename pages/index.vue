@@ -839,7 +839,7 @@ onMounted(async () => {
 
 .card-value {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 600;
   color: #0f172a;
   letter-spacing: -0.5px;
 }

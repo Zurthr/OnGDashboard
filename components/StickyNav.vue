@@ -216,7 +216,7 @@ onBeforeUnmount(() => {
   margin:0 auto;
   z-index: 9;
   /* Frosted glass background */
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(16px) saturate(1.6);
   -webkit-backdrop-filter: blur(16px) saturate(1.6);
   border-bottom: 1px solid rgba(0, 0, 0, 0.07);
@@ -225,6 +225,7 @@ onBeforeUnmount(() => {
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
               opacity 0.3s ease;
   will-change: transform;
+  border-radius:12px;
 }
 
 .nav-visible {
@@ -241,7 +242,7 @@ onBeforeUnmount(() => {
 .sticky-nav-inner {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 10px 28px;
+  padding: 12px 32px;
   display: flex;
   align-items: center;
   gap: 10px;
