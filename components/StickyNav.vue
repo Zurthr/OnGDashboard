@@ -53,7 +53,7 @@
           <Icon name="heroicons:chevron-down-20-solid" class="dropdown-chevron" />
         </div>
 
-        <!-- Umbilical Slot -->
+        <!-- Umbilical 
         <div class="dropdown-wrap">
           <select class="nav-dropdown" disabled>
             <option value="">Umbilical Slot</option>
@@ -64,7 +64,7 @@
             <option>[Choice 5]</option>
           </select>
           <Icon name="heroicons:chevron-down-20-solid" class="dropdown-chevron" />
-        </div>
+        </div> -->
 
         <!-- Installation Method -->
         <div class="dropdown-wrap">
@@ -213,9 +213,8 @@ onBeforeUnmount(() => {
 .sticky-nav-wrapper {
   position: fixed;
   top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
+  margin:0 auto;
+  z-index: 9;
   /* Frosted glass background */
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(16px) saturate(1.6);
@@ -248,6 +247,7 @@ onBeforeUnmount(() => {
   gap: 10px;
   flex-wrap: nowrap;
   overflow-x: auto;
+  justify-content:center;
 }
 
 /* Hide scrollbar on the inner row */
@@ -421,7 +421,6 @@ onBeforeUnmount(() => {
 
 /* ─── ACTION BUTTONS ──────────────────────────────────── */
 .nav-actions {
-  margin-left: auto;
   gap: 6px;
 }
 

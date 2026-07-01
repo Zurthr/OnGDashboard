@@ -1,9 +1,10 @@
-<template>
-  <div>
-    <StickyNav />
-    <div class="page-offset">
+<template >
+  <Sidebar />\
+
+  <div style="justify-content:center; display:flex; flex-direction:row;">
+          <StickyNav />
+
       <NuxtPage />
-    </div>
   </div>
 </template>
 

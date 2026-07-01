@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard-wrapper">
+  <div class="dashboard-wrapper" style="margin:0 240 0 0; width:1080px;">
     <div class="container">
 
       <!-- ===== COMPARE RESULTS SECTION ===== -->
@@ -592,9 +592,9 @@ onMounted(async () => {
    3-COLUMN RESULTS GRID
    ============================================= */
 .results-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 24px;
+  display: flex;
+  flex-direction: row;
+ gap: 24px;
   align-items: start;
 }
 
@@ -615,8 +615,8 @@ onMounted(async () => {
 }
 
 .col-header-value {
-  font-size: 44px;
-  font-weight: 800;
+  font-size: 32px;
+  font-weight: 600;
   color: #0f172a;
   line-height: 1;
   letter-spacing: -1.5px;
@@ -651,8 +651,11 @@ onMounted(async () => {
    COL 1: COST BASIS
    ============================================= */
 .col-basis {
+  margin-top:16px;
   display: flex;
   flex-direction: column;
+    width: fit-content;
+
 }
 
 /* =============================================
@@ -661,14 +664,17 @@ onMounted(async () => {
 .col-forecast {
   display: flex;
   flex-direction: column;
+    width: fit-content;
+
 }
 
 .forecast-inner {
   background-color: #fdf0f0;
   border-radius: var(--border-radius-xl);
-  padding: 28px 20px 24px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
+  width:280px;
 }
 
 /* =============================================
@@ -677,15 +683,17 @@ onMounted(async () => {
 .col-variance {
   display: flex;
   flex-direction: column;
+  width: fit-content;
 }
 
 .variance-inner {
   background-color: #f6fbee;
   border: 2px dashed #a3c96c;
   border-radius: var(--border-radius-xl);
-  padding: 28px 20px 24px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
+  width:280px;
 }
 
 .variance-header-row {
