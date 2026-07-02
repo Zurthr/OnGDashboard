@@ -2,6 +2,319 @@
   <div class="dashboard-wrapper" style="margin:0 240 0 0; width:1080px;">
     <div class="container">
 
+      <!-- ===== AT A GLANCE SCORECARD ROW ===== -->
+      <div class="at-a-glance-section">
+        <h2 class="section-title">At a Glance</h2>
+        <div class="scorecard-row">
+          <!-- Card 1: Cost Basis (USD) -->
+          <div class="scorecard-card neutral-card">
+            <span class="card-label">Cost Basis (USD)</span>
+            <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
+            <span v-else class="card-val num-font">{{ formatCostBasisTotal(store.summaryFindings.baselineTotal) }}</span>
+            <span class="card-subtitle">
+              <span class="subtext-bold">1,097</span> <span class="subtext-unit">US$/ft</span>
+            </span>
+          </div>
+
+          <!-- Card 2: Forecasted (USD) -->
+          <div class="scorecard-card pink-card">
+            <span class="card-label">Forecasted (USD)</span>
+            <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
+            <span v-else class="card-val num-font">{{ formatCurrency(store.summaryFindings.forecastTotal) }}</span>
+            <span class="card-subtitle">
+              <span class="subtext-bold">1,097</span> <span class="subtext-unit">US$/ft</span>
+            </span>
+          </div>
+
+          <!-- Card 3: Variance -->
+          <div class="scorecard-card variance-card animate-focus">
+            <span class="card-label">Variance</span>
+            <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
+            <span v-else class="card-val num-font">{{ formatCurrency(store.summaryFindings.absoluteVarianceTotal) }}</span>
+            <span class="card-subtitle">
+              <span class="subtext-bold">1,097</span> <span class="subtext-unit">US$/ft</span>
+            </span>
+            <div v-if="!store.loadingDetails" class="severity-badge-container">
+              <span class="severity-pill" :class="getSeverityBadgeClass(store.summaryFindings.percentageDeviationTotal)">
+                {{ getSeverityLabel(store.summaryFindings.percentageDeviationTotal) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Card 4: Deviation of -->
+          <div class="scorecard-card neutral-card">
+            <span class="card-label">Deviation of</span>
+            <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
+            <span v-else class="card-val num-font">{{ store.summaryFindings.percentageDeviationTotal }}%</span>
+            <span class="card-subtitle">of total cost basis</span>
+          </div>
+
+          <!-- Card 5: Dominant Driver -->
+          <div class="scorecard-card neutral-card">
+            <span class="card-label">Dominant Driver</span>
+            <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
+            <template v-else>
+              <span class="card-val num-font">{{ dominantDriverRatio }}%</span>
+              <span class="card-subtitle">{{ dominantDriverName }}</span>
+            </template>
+          </div>
+
+          <!-- Card 6: Historical Status -->
+          <div class="scorecard-card neutral-card">
+            <span class="card-label">Historical Status</span>
+            <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
+            <template v-else>
+              <span class="card-val">{{ historicalStatusLabel }}</span>
+              <span class="card-subtitle">Range</span>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== VISUALIZATION PANEL ===== -->
+      <div class="visualization-panel">
+        <div class="panel-header">
+          <span class="panel-title">Visualization: Operation Location</span>
+        </div>
+        
+        <div class="panel-content-card">
+          <!-- Active Tab Content -->
+          <div v-show="activeTab === 'Location'" class="tab-panel-content">
+            <div class="map-container">
+              <svg class="indonesia-svg-map" viewBox="0 0 1000 400" xmlns="http://www.w3.org/2000/svg">
+                <!-- Soft Ocean Background Gradient -->
+                <defs>
+                  <linearGradient id="oceanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#eef3f7" />
+                    <stop offset="100%" stop-color="#dce6ef" />
+                  </linearGradient>
+                </defs>
+                
+                <!-- Ocean Background -->
+                <rect width="1000" height="400" fill="url(#oceanGrad)" />
+                
+                <!-- Cartographic Grid Lines (subtle latitude/longitude) -->
+                <g stroke="#b8c6d4" stroke-width="0.5" stroke-dasharray="4,6" opacity="0.6">
+                  <!-- Latitudes -->
+                  <line x1="0" y1="80" x2="1000" y2="80" />
+                  <line x1="0" y1="160" x2="1000" y2="160" />
+                  <line x1="0" y1="240" x2="1000" y2="240" />
+                  <line x1="0" y1="320" x2="1000" y2="320" />
+                  <!-- Longitudes -->
+                  <line x1="150" y1="0" x2="150" y2="400" />
+                  <line x1="300" y1="0" x2="300" y2="400" />
+                  <line x1="450" y1="0" x2="450" y2="400" />
+                  <line x1="600" y1="0" x2="600" y2="400" />
+                  <line x1="750" y1="0" x2="750" y2="400" />
+                  <line x1="900" y1="0" x2="900" y2="400" />
+                </g>
+
+                <!-- Grid Coordinates Labels -->
+                <g fill="#94a3b8" font-family="'Inter', sans-serif" font-size="9" opacity="0.8">
+                  <text x="10" y="75">5° N</text>
+                  <text x="10" y="155">0° EQ</text>
+                  <text x="10" y="235">5° S</text>
+                  <text x="10" y="315">10° S</text>
+                  
+                  <text x="155" y="390">100° E</text>
+                  <text x="300" y="390">105° E</text>
+                  <text x="450" y="390">110° E</text>
+                  <text x="600" y="390">115° E</text>
+                  <text x="750" y="390">120° E</text>
+                  <text x="900" y="390">125° E</text>
+                </g>
+
+                <!-- Elegant Cartographic Accents: Compass Rose and Scale Bar -->
+                <!-- Compass Rose -->
+                <g transform="translate(930, 70)" opacity="0.65">
+                  <circle cx="0" cy="0" r="28" fill="none" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,3" />
+                  <!-- North pointer -->
+                  <polygon points="0,-32 5,-5 0,0" fill="#475569" />
+                  <polygon points="0,-32 -5,-5 0,0" fill="#94a3b8" />
+                  <!-- South pointer -->
+                  <polygon points="0,32 5,5 0,0" fill="#94a3b8" />
+                  <polygon points="0,32 -5,5 0,0" fill="#475569" />
+                  <!-- East pointer -->
+                  <polygon points="32,0 5,5 0,0" fill="#475569" />
+                  <polygon points="32,0 5,-5 0,0" fill="#94a3b8" />
+                  <!-- West pointer -->
+                  <polygon points="-32,0 -5,5 0,0" fill="#94a3b8" />
+                  <polygon points="-32,0 -5,-5 0,0" fill="#475569" />
+                  <!-- Text 'N' -->
+                  <text x="-4" y="-36" font-family="'Inter', sans-serif" font-weight="700" font-size="11" fill="#475569">N</text>
+                </g>
+
+                <!-- Scale Bar -->
+                <g transform="translate(40, 360)" opacity="0.75">
+                  <rect x="0" y="0" width="80" height="4" fill="#cbd5e1" />
+                  <rect x="80" y="0" width="80" height="4" fill="#475569" />
+                  <line x1="0" y1="-2" x2="0" y2="6" stroke="#475569" stroke-width="1.5" />
+                  <line x1="80" y1="-2" x2="80" y2="6" stroke="#475569" stroke-width="1.5" />
+                  <line x1="160" y1="-2" x2="160" y2="6" stroke="#475569" stroke-width="1.5" />
+                  <text x="-2" y="-6" font-family="'Inter', sans-serif" font-size="9" fill="#475569">0</text>
+                  <text x="70" y="-6" font-family="'Inter', sans-serif" font-size="9" fill="#475569">250 km</text>
+                  <text x="150" y="-6" font-family="'Inter', sans-serif" font-size="9" fill="#475569">500 km</text>
+                </g>
+
+                <!-- stylized land masses of Indonesia -->
+                <g class="landmasses-group" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1" stroke-linejoin="round">
+                  <!-- Sumatra -->
+                  <path d="M 50,110 C 65,95 90,82 112,98 C 132,112 158,138 180,165 C 200,190 230,230 245,260 C 235,270 215,275 200,260 C 180,240 150,210 120,180 C 90,150 70,125 50,110 Z" />
+                  
+                  <!-- Bangka & Belitung -->
+                  <ellipse cx="250" cy="210" rx="9" ry="5" transform="rotate(-15 250 210)" />
+                  <ellipse cx="280" cy="220" rx="7" ry="5" />
+                  
+                  <!-- Java -->
+                  <path d="M 235,285 C 260,290 300,293 350,295 C 400,297 450,295 500,300 C 525,303 535,307 530,313 C 500,315 450,310 400,313 C 350,313 300,305 250,303 C 235,300 230,293 235,285 Z" />
+                  
+                  <!-- Madura -->
+                  <path d="M 485,296 C 495,295 515,296 525,299 C 520,303 500,303 485,301 Z" />
+                  
+                  <!-- Bali, Lombok, Sumbawa, Flores, Timor chain -->
+                  <ellipse cx="544" cy="315" rx="7" ry="4" /> <!-- Bali -->
+                  <ellipse cx="560" cy="316" rx="6" ry="4" /> <!-- Lombok -->
+                  <path d="M 574,316 C 585,315 595,316 600,320 C 595,324 580,323 574,321 Z" /> <!-- Sumbawa -->
+                  <path d="M 612,318 C 630,315 650,316 665,321 C 655,326 630,325 612,323 Z" /> <!-- Flores -->
+                  <path d="M 680,320 C 700,323 710,328 725,332 C 715,338 695,335 680,325 Z" transform="rotate(-5 700 325)" /> <!-- Timor -->
+                  
+                  <!-- Kalimantan (Borneo) -->
+                  <path d="M 360,145 C 370,125 400,115 430,120 C 460,125 480,135 490,155 C 495,175 485,205 488,225 C 470,240 440,245 420,240 C 400,235 380,237 370,225 C 355,205 350,175 360,145 Z" />
+                  
+                  <!-- Sulawesi -->
+                  <path d="M 545,155 C 560,150 580,153 590,160 C 595,170 585,185 595,195 C 610,190 630,180 645,190 C 640,200 625,210 635,220 C 645,225 655,215 660,230 C 640,235 620,230 610,220 C 600,230 585,243 575,240 C 570,230 580,210 572,200 C 560,195 540,193 545,180 C 550,170 540,160 545,155 Z" />
+                  
+                  <!-- Halmahera -->
+                  <path d="M 700,130 C 705,120 715,125 720,135 C 715,145 710,140 708,150 C 715,155 725,160 720,168 C 712,160 705,150 700,130 Z" />
+                  
+                  <!-- Seram -->
+                  <ellipse cx="740" cy="215" rx="18" ry="6" transform="rotate(-10 740 215)" />
+                  
+                  <!-- Papua -->
+                  <path d="M 800,215 C 815,195 830,185 845,200 C 860,215 880,205 900,210 C 930,215 950,225 960,240 C 950,255 930,260 900,255 C 880,250 860,255 840,243 C 825,235 810,233 800,215 Z" />
+                </g>
+
+                <!-- Province Outline Labels visible for Context (e.g. Sumatra, Java, Kalimantan, Sulawesi, Papua, etc) -->
+                <g fill="#94a3b8" font-family="'Poppins', sans-serif" font-size="10" font-weight="600" opacity="0.75" pointer-events="none">
+                  <text x="100" y="150" transform="rotate(-38 100 150)">SUMATRA</text>
+                  <text x="360" y="325">JAVA</text>
+                  <text x="390" y="180">KALIMANTAN</text>
+                  <text x="580" y="170" transform="rotate(30 580 170)">SULAWESI</text>
+                  <text x="860" y="235">PAPUA</text>
+                  <text x="280" y="105">BRUNEI</text>
+                  <text x="625" y="115">CELEBES SEA</text>
+                  <text x="470" y="270">JAVA SEA</text>
+                </g>
+
+                <!-- Interactive Location Beacons (Offshore Oil and Gas Provinces) -->
+                <g class="beacons-group">
+                  <g 
+                    v-for="loc in locationsData" 
+                    :key="loc.name"
+                    class="map-beacon"
+                    :class="{ 'active-beacon': store.selectedLocation === loc.name }"
+                    @click="store.selectedLocation = loc.name"
+                  >
+                    <!-- Pulsing Outer Ring (Selected State Only) -->
+                    <circle 
+                      v-if="store.selectedLocation === loc.name"
+                      :cx="loc.x" 
+                      :cy="loc.y" 
+                      r="16" 
+                      fill="none" 
+                      stroke="#ef4444" 
+                      stroke-width="2" 
+                      class="pulse-ring" 
+                    />
+                    
+                    <!-- Outer Glow Hover Ring -->
+                    <circle 
+                      :cx="loc.x" 
+                      :cy="loc.y" 
+                      r="10" 
+                      fill="#ef4444" 
+                      :fill-opacity="store.selectedLocation === loc.name ? 0.35 : 0" 
+                      class="hover-ring" 
+                    />
+
+                    <!-- Core Beacon Point -->
+                    <circle 
+                      :cx="loc.x" 
+                      :cy="loc.y" 
+                      r="6" 
+                      :fill="store.selectedLocation === loc.name ? '#ef4444' : '#475569'" 
+                      stroke="#ffffff"
+                      stroke-width="1.5"
+                    />
+
+                    <!-- Interactive Tooltip Area / Invisible Hover Extender -->
+                    <circle 
+                      :cx="loc.x" 
+                      :cy="loc.y" 
+                      r="25" 
+                      fill="transparent" 
+                      style="cursor: pointer;"
+                    />
+
+                    <!-- Label next to beacon -->
+                    <text 
+                      :x="loc.x + (loc.labelAlign === 'left' ? -12 : 12)" 
+                      :y="loc.y + 4" 
+                      :text-anchor="loc.labelAlign === 'left' ? 'end' : 'start'"
+                      font-family="'Poppins', sans-serif"
+                      :font-size="store.selectedLocation === loc.name ? '12' : '10'"
+                      :font-weight="store.selectedLocation === loc.name ? '700' : '500'"
+                      :fill="store.selectedLocation === loc.name ? '#0f172a' : '#475569'"
+                      class="beacon-label"
+                    >
+                      {{ loc.name }}
+                    </text>
+                  </g>
+                </g>
+              </svg>
+
+              <!-- Map Details Card Hover Info Overlay (Bottom Left corner of map) -->
+              <div class="map-info-overlay">
+                <span class="overlay-tag">OFFSHORE PROVINCE</span>
+                <span class="overlay-location-name">{{ store.selectedLocation }}</span>
+                <span class="overlay-coords">{{ getActiveCoords }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Variance Tab Content (Placeholder) -->
+          <div v-show="activeTab === 'Variance'" class="tab-panel-content placeholder-tab">
+            <div class="coming-soon-wrapper">
+              <Icon name="heroicons:chart-bar-20-solid" class="coming-soon-icon" />
+              <span class="coming-soon-text">Variance visualization coming soon</span>
+            </div>
+          </div>
+
+          <!-- Treemap Tab Content (Placeholder) -->
+          <div v-show="activeTab === 'Treemap'" class="tab-panel-content placeholder-tab">
+            <div class="coming-soon-wrapper">
+              <Icon name="heroicons:square-2-stack-20-solid" class="coming-soon-icon" />
+              <span class="coming-soon-text">Treemap visualization coming soon</span>
+            </div>
+          </div>
+          
+          <!-- Tab Bar (At the bottom of the map panel as shown in screenshot) -->
+          <div class="tab-bar-row">
+            <div class="tab-buttons">
+              <button 
+                v-for="tab in ['Location', 'Variance', 'Treemap']" 
+                :key="tab"
+                class="tab-btn" 
+                :class="{ 'active-tab': activeTab === tab }"
+                @click="activeTab = tab"
+              >
+                <span>{{ tab }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ===== COMPARE RESULTS SECTION ===== -->
       <div class="compare-results-section">
 
@@ -339,6 +652,49 @@ const store = useVedaStore()
 const copied = ref(false)
 const devToolsOpen = ref(false)
 
+const activeTab = ref('Location')
+
+const locationsData = [
+  { name: 'Natuna Sea', x: 290, y: 125, labelAlign: 'left', coords: '4° N, 108° E' },
+  { name: 'East Kalimantan', x: 495, y: 175, labelAlign: 'right', coords: '0.8° S, 117.5° E' },
+  { name: 'Madura Strait', x: 480, y: 290, labelAlign: 'left', coords: '7.5° S, 113° E' },
+  { name: 'Malacca Strait', x: 90, y: 80, labelAlign: 'right', coords: '3.5° N, 99° E' },
+  { name: 'Sunda Asri', x: 260, y: 265, labelAlign: 'left', coords: '5.8° S, 106.5° E' },
+  { name: 'Makassar Strait', x: 535, y: 195, labelAlign: 'right', coords: '1.2° S, 118.8° E' }
+]
+
+const getActiveCoords = computed(() => {
+  const active = locationsData.find(l => l.name === store.selectedLocation)
+  return active ? active.coords : '0.0° N, 0.0° E'
+})
+
+const dominantDriver = computed(() => {
+  return store.componentFindings.find(c => c.isDominantDriver)
+})
+
+const dominantDriverRatio = computed(() => {
+  return dominantDriver.value ? dominantDriver.value.contributionRatio : 0
+})
+
+const dominantDriverName = computed(() => {
+  if (!dominantDriver.value) return 'None'
+  return dominantDriver.value.costType.replace(/ (Costs|Cost)/g, '')
+})
+
+const historicalStatusLabel = computed(() => {
+  if (store.computedJson?.overallSeverity === 'HIGH') return 'Unprecedented'
+  if (store.computedJson?.overallSeverity === 'MEDIUM') return 'Outlier'
+  return 'Normal'
+})
+
+// Variance Card Severity Class
+const getSeverityBadgeClass = (deviation: number) => {
+  if (deviation <= 5) return 'badge-low'
+  if (deviation <= 15) return 'badge-medium'
+  if (deviation <= 30) return 'badge-high'
+  return 'badge-critical'
+}
+
 
 // Compute formatted JSON string for display
 const formattedJson = computed(() => {
@@ -418,6 +774,347 @@ onMounted(async () => {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+}
+
+/* =============================================
+   AT A GLANCE SCORECARD ROW
+   ============================================= */
+.at-a-glance-section {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  font-family: var(--font-family);
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 16px;
+  letter-spacing: -0.3px;
+}
+
+.scorecard-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+}
+
+.scorecard-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--border-radius-md);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 120px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.scorecard-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.neutral-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.pink-card {
+  background-color: #fdf0f0;
+  border: 1px solid #fecaca;
+}
+
+.variance-card {
+  background-color: #f6fbee;
+  border: 1.5px solid #a3c96c;
+}
+
+/* Variance Card animation border highlight */
+@keyframes border-glow {
+  0%, 100% {
+    border-color: #a3c96c;
+    box-shadow: 0 0 4px rgba(163, 201, 108, 0.2);
+  }
+  50% {
+    border-color: #ef4444;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
+  }
+}
+
+.animate-focus {
+  animation: border-glow 3s ease-in-out infinite;
+}
+
+.card-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 6px;
+  text-transform: capitalize;
+}
+
+.card-val {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+
+.card-subtitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-top: auto;
+}
+
+.subtext-bold {
+  font-weight: 700;
+  color: #334155;
+}
+
+.subtext-unit {
+  font-weight: 400;
+}
+
+.card-val-skeleton {
+  width: 80%;
+  height: 28px;
+  margin-bottom: 4px;
+}
+
+/* Severity Pill inside Variance Card */
+.severity-badge-container {
+  margin-top: 6px;
+}
+
+.severity-pill {
+  font-family: var(--font-family);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 99px;
+  display: inline-block;
+  text-transform: capitalize;
+}
+
+.badge-low {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.badge-medium {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.badge-high {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.badge-critical {
+  background-color: #7f1d1d;
+  color: #ffffff;
+}
+
+/* =============================================
+   VISUALIZATION PANEL
+   ============================================= */
+.visualization-panel {
+  margin-bottom: 36px;
+  width: 100%;
+}
+
+.panel-header {
+  margin-bottom: 12px;
+}
+
+.panel-title {
+  font-family: var(--font-family);
+  font-size: 16px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.panel-content-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--border-radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tab-panel-content {
+  width: 100%;
+}
+
+.map-container {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+}
+
+.indonesia-svg-map {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Map hover rings and pulsing keyframes */
+.map-beacon {
+  transition: transform 0.2s ease;
+  cursor: pointer;
+}
+
+.map-beacon:hover {
+  transform: scale(1.05);
+}
+
+.map-beacon .hover-ring {
+  transition: fill-opacity 0.2s ease;
+}
+
+.map-beacon:hover .hover-ring {
+  fill-opacity: 0.25;
+}
+
+@keyframes map-pulse {
+  0% {
+    r: 8px;
+    opacity: 1;
+  }
+  100% {
+    r: 22px;
+    opacity: 0;
+  }
+}
+
+.pulse-ring {
+  transform-origin: center;
+  animation: map-pulse 1.8s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+.beacon-label {
+  transition: font-size 0.2s, font-weight 0.2s, fill 0.2s;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Map coordinates info overlay card */
+.map-info-overlay {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 1px solid #cbd5e1;
+  border-radius: var(--border-radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  min-width: 180px;
+}
+
+.overlay-tag {
+  font-size: 9px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.overlay-location-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.overlay-coords {
+  font-family: var(--font-number);
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Tabs layout */
+.tab-bar-row {
+  display: flex;
+  justify-content: flex-start;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 14px;
+}
+
+.tab-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.tab-btn {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 99px;
+  padding: 8px 18px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.tab-btn.active-tab {
+  background: linear-gradient(135deg, #fb923c, #ef4444);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+}
+
+/* Placeholders */
+.placeholder-tab {
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--border-radius-md);
+}
+
+.coming-soon-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #94a3b8;
+}
+
+.coming-soon-icon {
+  width: 48px;
+  height: 48px;
+  opacity: 0.7;
+}
+
+.coming-soon-text {
+  font-size: 14px;
+  font-weight: 500;
 }
 
 /* =============================================

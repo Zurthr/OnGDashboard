@@ -39,6 +39,9 @@ interface VedaState {
   loadingNarrative: boolean
   narrativeError: string | null
   narrativeVerified: boolean
+  // Geographic states
+  selectedLocation: string
+  locations: string[]
 }
 
 export const useVedaStore = defineStore('vedaStore', {
@@ -124,7 +127,17 @@ export const useVedaStore = defineStore('vedaStore', {
     narrative: null,
     loadingNarrative: false,
     narrativeError: null,
-    narrativeVerified: false
+    narrativeVerified: false,
+    // Initialize geographic fields
+    selectedLocation: 'Natuna Sea',
+    locations: [
+      'Natuna Sea',
+      'East Kalimantan',
+      'Madura Strait',
+      'Malacca Strait',
+      'Sunda Asri',
+      'Makassar Strait'
+    ]
   }),
 
   getters: {

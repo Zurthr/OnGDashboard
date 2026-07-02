@@ -80,14 +80,14 @@
         </div>
 
         <!-- Proj. Location -->
-        <div class="dropdown-wrap">
-          <select class="nav-dropdown" disabled>
-            <option value="">Proj. Location</option>
-            <option>[Choice 1]</option>
-            <option>[Choice 2]</option>
-            <option>[Choice 3]</option>
-            <option>[Choice 4]</option>
-            <option>[Choice 5]</option>
+        <div class="dropdown-wrap location-dropdown-wrap">
+          <select 
+            class="nav-dropdown location-nav-select"
+            v-model="store.selectedLocation"
+          >
+            <option v-for="loc in store.locations" :key="loc" :value="loc">
+              {{ loc }}
+            </option>
           </select>
           <Icon name="heroicons:chevron-down-20-solid" class="dropdown-chevron" />
         </div>
@@ -381,6 +381,24 @@ onBeforeUnmount(() => {
   color: #94a3b8;
   pointer-events: none;
   flex-shrink: 0;
+}
+
+/* Location dropdown styling */
+.location-dropdown-wrap .nav-dropdown {
+  cursor: pointer;
+  border-color: #cbd5e1;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  min-width: 140px;
+}
+
+.location-dropdown-wrap .nav-dropdown:hover {
+  border-color: #fb923c;
+}
+
+.location-dropdown-wrap .nav-dropdown:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
 }
 
 /* Scenario dropdown — slightly wider, active style */
