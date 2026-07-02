@@ -27,7 +27,7 @@
           </div>
 
           <!-- Card 3: Variance -->
-          <div class="scorecard-card variance-card animate-focus">
+          <div class="scorecard-card variance-card">
             <span class="card-label">Variance</span>
             <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
             <span v-else class="card-val num-font">{{ formatCurrency(store.summaryFindings.absoluteVarianceTotal) }}</span>
@@ -81,199 +81,10 @@
           <!-- Active Tab Content -->
           <div v-show="activeTab === 'Location'" class="tab-panel-content">
             <div class="map-container">
-              <svg class="indonesia-svg-map" viewBox="0 0 1000 400" xmlns="http://www.w3.org/2000/svg">
-                <!-- Soft Ocean Background Gradient -->
-                <defs>
-                  <linearGradient id="oceanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="#eef3f7" />
-                    <stop offset="100%" stop-color="#dce6ef" />
-                  </linearGradient>
-                </defs>
-                
-                <!-- Ocean Background -->
-                <rect width="1000" height="400" fill="url(#oceanGrad)" />
-                
-                <!-- Cartographic Grid Lines (subtle latitude/longitude) -->
-                <g stroke="#b8c6d4" stroke-width="0.5" stroke-dasharray="4,6" opacity="0.6">
-                  <!-- Latitudes -->
-                  <line x1="0" y1="80" x2="1000" y2="80" />
-                  <line x1="0" y1="160" x2="1000" y2="160" />
-                  <line x1="0" y1="240" x2="1000" y2="240" />
-                  <line x1="0" y1="320" x2="1000" y2="320" />
-                  <!-- Longitudes -->
-                  <line x1="150" y1="0" x2="150" y2="400" />
-                  <line x1="300" y1="0" x2="300" y2="400" />
-                  <line x1="450" y1="0" x2="450" y2="400" />
-                  <line x1="600" y1="0" x2="600" y2="400" />
-                  <line x1="750" y1="0" x2="750" y2="400" />
-                  <line x1="900" y1="0" x2="900" y2="400" />
-                </g>
+              <!-- Leaflet map fills the container -->
+              <div id="map-viewport" class="leaflet-map-viewport"></div>
 
-                <!-- Grid Coordinates Labels -->
-                <g fill="#94a3b8" font-family="'Inter', sans-serif" font-size="9" opacity="0.8">
-                  <text x="10" y="75">5° N</text>
-                  <text x="10" y="155">0° EQ</text>
-                  <text x="10" y="235">5° S</text>
-                  <text x="10" y="315">10° S</text>
-                  
-                  <text x="155" y="390">100° E</text>
-                  <text x="300" y="390">105° E</text>
-                  <text x="450" y="390">110° E</text>
-                  <text x="600" y="390">115° E</text>
-                  <text x="750" y="390">120° E</text>
-                  <text x="900" y="390">125° E</text>
-                </g>
-
-                <!-- Elegant Cartographic Accents: Compass Rose and Scale Bar -->
-                <!-- Compass Rose -->
-                <g transform="translate(930, 70)" opacity="0.65">
-                  <circle cx="0" cy="0" r="28" fill="none" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,3" />
-                  <!-- North pointer -->
-                  <polygon points="0,-32 5,-5 0,0" fill="#475569" />
-                  <polygon points="0,-32 -5,-5 0,0" fill="#94a3b8" />
-                  <!-- South pointer -->
-                  <polygon points="0,32 5,5 0,0" fill="#94a3b8" />
-                  <polygon points="0,32 -5,5 0,0" fill="#475569" />
-                  <!-- East pointer -->
-                  <polygon points="32,0 5,5 0,0" fill="#475569" />
-                  <polygon points="32,0 5,-5 0,0" fill="#94a3b8" />
-                  <!-- West pointer -->
-                  <polygon points="-32,0 -5,5 0,0" fill="#94a3b8" />
-                  <polygon points="-32,0 -5,-5 0,0" fill="#475569" />
-                  <!-- Text 'N' -->
-                  <text x="-4" y="-36" font-family="'Inter', sans-serif" font-weight="700" font-size="11" fill="#475569">N</text>
-                </g>
-
-                <!-- Scale Bar -->
-                <g transform="translate(40, 360)" opacity="0.75">
-                  <rect x="0" y="0" width="80" height="4" fill="#cbd5e1" />
-                  <rect x="80" y="0" width="80" height="4" fill="#475569" />
-                  <line x1="0" y1="-2" x2="0" y2="6" stroke="#475569" stroke-width="1.5" />
-                  <line x1="80" y1="-2" x2="80" y2="6" stroke="#475569" stroke-width="1.5" />
-                  <line x1="160" y1="-2" x2="160" y2="6" stroke="#475569" stroke-width="1.5" />
-                  <text x="-2" y="-6" font-family="'Inter', sans-serif" font-size="9" fill="#475569">0</text>
-                  <text x="70" y="-6" font-family="'Inter', sans-serif" font-size="9" fill="#475569">250 km</text>
-                  <text x="150" y="-6" font-family="'Inter', sans-serif" font-size="9" fill="#475569">500 km</text>
-                </g>
-
-                <!-- stylized land masses of Indonesia -->
-                <g class="landmasses-group" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1" stroke-linejoin="round">
-                  <!-- Sumatra -->
-                  <path d="M 50,110 C 65,95 90,82 112,98 C 132,112 158,138 180,165 C 200,190 230,230 245,260 C 235,270 215,275 200,260 C 180,240 150,210 120,180 C 90,150 70,125 50,110 Z" />
-                  
-                  <!-- Bangka & Belitung -->
-                  <ellipse cx="250" cy="210" rx="9" ry="5" transform="rotate(-15 250 210)" />
-                  <ellipse cx="280" cy="220" rx="7" ry="5" />
-                  
-                  <!-- Java -->
-                  <path d="M 235,285 C 260,290 300,293 350,295 C 400,297 450,295 500,300 C 525,303 535,307 530,313 C 500,315 450,310 400,313 C 350,313 300,305 250,303 C 235,300 230,293 235,285 Z" />
-                  
-                  <!-- Madura -->
-                  <path d="M 485,296 C 495,295 515,296 525,299 C 520,303 500,303 485,301 Z" />
-                  
-                  <!-- Bali, Lombok, Sumbawa, Flores, Timor chain -->
-                  <ellipse cx="544" cy="315" rx="7" ry="4" /> <!-- Bali -->
-                  <ellipse cx="560" cy="316" rx="6" ry="4" /> <!-- Lombok -->
-                  <path d="M 574,316 C 585,315 595,316 600,320 C 595,324 580,323 574,321 Z" /> <!-- Sumbawa -->
-                  <path d="M 612,318 C 630,315 650,316 665,321 C 655,326 630,325 612,323 Z" /> <!-- Flores -->
-                  <path d="M 680,320 C 700,323 710,328 725,332 C 715,338 695,335 680,325 Z" transform="rotate(-5 700 325)" /> <!-- Timor -->
-                  
-                  <!-- Kalimantan (Borneo) -->
-                  <path d="M 360,145 C 370,125 400,115 430,120 C 460,125 480,135 490,155 C 495,175 485,205 488,225 C 470,240 440,245 420,240 C 400,235 380,237 370,225 C 355,205 350,175 360,145 Z" />
-                  
-                  <!-- Sulawesi -->
-                  <path d="M 545,155 C 560,150 580,153 590,160 C 595,170 585,185 595,195 C 610,190 630,180 645,190 C 640,200 625,210 635,220 C 645,225 655,215 660,230 C 640,235 620,230 610,220 C 600,230 585,243 575,240 C 570,230 580,210 572,200 C 560,195 540,193 545,180 C 550,170 540,160 545,155 Z" />
-                  
-                  <!-- Halmahera -->
-                  <path d="M 700,130 C 705,120 715,125 720,135 C 715,145 710,140 708,150 C 715,155 725,160 720,168 C 712,160 705,150 700,130 Z" />
-                  
-                  <!-- Seram -->
-                  <ellipse cx="740" cy="215" rx="18" ry="6" transform="rotate(-10 740 215)" />
-                  
-                  <!-- Papua -->
-                  <path d="M 800,215 C 815,195 830,185 845,200 C 860,215 880,205 900,210 C 930,215 950,225 960,240 C 950,255 930,260 900,255 C 880,250 860,255 840,243 C 825,235 810,233 800,215 Z" />
-                </g>
-
-                <!-- Province Outline Labels visible for Context (e.g. Sumatra, Java, Kalimantan, Sulawesi, Papua, etc) -->
-                <g fill="#94a3b8" font-family="'Poppins', sans-serif" font-size="10" font-weight="600" opacity="0.75" pointer-events="none">
-                  <text x="100" y="150" transform="rotate(-38 100 150)">SUMATRA</text>
-                  <text x="360" y="325">JAVA</text>
-                  <text x="390" y="180">KALIMANTAN</text>
-                  <text x="580" y="170" transform="rotate(30 580 170)">SULAWESI</text>
-                  <text x="860" y="235">PAPUA</text>
-                  <text x="280" y="105">BRUNEI</text>
-                  <text x="625" y="115">CELEBES SEA</text>
-                  <text x="470" y="270">JAVA SEA</text>
-                </g>
-
-                <!-- Interactive Location Beacons (Offshore Oil and Gas Provinces) -->
-                <g class="beacons-group">
-                  <g 
-                    v-for="loc in locationsData" 
-                    :key="loc.name"
-                    class="map-beacon"
-                    :class="{ 'active-beacon': store.selectedLocation === loc.name }"
-                    @click="store.selectedLocation = loc.name"
-                  >
-                    <!-- Pulsing Outer Ring (Selected State Only) -->
-                    <circle 
-                      v-if="store.selectedLocation === loc.name"
-                      :cx="loc.x" 
-                      :cy="loc.y" 
-                      r="16" 
-                      fill="none" 
-                      stroke="#ef4444" 
-                      stroke-width="2" 
-                      class="pulse-ring" 
-                    />
-                    
-                    <!-- Outer Glow Hover Ring -->
-                    <circle 
-                      :cx="loc.x" 
-                      :cy="loc.y" 
-                      r="10" 
-                      fill="#ef4444" 
-                      :fill-opacity="store.selectedLocation === loc.name ? 0.35 : 0" 
-                      class="hover-ring" 
-                    />
-
-                    <!-- Core Beacon Point -->
-                    <circle 
-                      :cx="loc.x" 
-                      :cy="loc.y" 
-                      r="6" 
-                      :fill="store.selectedLocation === loc.name ? '#ef4444' : '#475569'" 
-                      stroke="#ffffff"
-                      stroke-width="1.5"
-                    />
-
-                    <!-- Interactive Tooltip Area / Invisible Hover Extender -->
-                    <circle 
-                      :cx="loc.x" 
-                      :cy="loc.y" 
-                      r="25" 
-                      fill="transparent" 
-                      style="cursor: pointer;"
-                    />
-
-                    <!-- Label next to beacon -->
-                    <text 
-                      :x="loc.x + (loc.labelAlign === 'left' ? -12 : 12)" 
-                      :y="loc.y + 4" 
-                      :text-anchor="loc.labelAlign === 'left' ? 'end' : 'start'"
-                      font-family="'Poppins', sans-serif"
-                      :font-size="store.selectedLocation === loc.name ? '12' : '10'"
-                      :font-weight="store.selectedLocation === loc.name ? '700' : '500'"
-                      :fill="store.selectedLocation === loc.name ? '#0f172a' : '#475569'"
-                      class="beacon-label"
-                    >
-                      {{ loc.name }}
-                    </text>
-                  </g>
-                </g>
-              </svg>
-
-              <!-- Map Details Card Hover Info Overlay (Bottom Left corner of map) -->
+              <!-- Map Details Card Overlay (Bottom Left corner) -->
               <div class="map-info-overlay">
                 <span class="overlay-tag">OFFSHORE PROVINCE</span>
                 <span class="overlay-location-name">{{ store.selectedLocation }}</span>
@@ -637,7 +448,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useVedaStore } from '~/stores/vedaStore'
 
 // Title SEO meta tags
@@ -655,12 +466,12 @@ const devToolsOpen = ref(false)
 const activeTab = ref('Location')
 
 const locationsData = [
-  { name: 'Natuna Sea', x: 290, y: 125, labelAlign: 'left', coords: '4° N, 108° E' },
-  { name: 'East Kalimantan', x: 495, y: 175, labelAlign: 'right', coords: '0.8° S, 117.5° E' },
-  { name: 'Madura Strait', x: 480, y: 290, labelAlign: 'left', coords: '7.5° S, 113° E' },
-  { name: 'Malacca Strait', x: 90, y: 80, labelAlign: 'right', coords: '3.5° N, 99° E' },
-  { name: 'Sunda Asri', x: 260, y: 265, labelAlign: 'left', coords: '5.8° S, 106.5° E' },
-  { name: 'Makassar Strait', x: 535, y: 195, labelAlign: 'right', coords: '1.2° S, 118.8° E' }
+  { name: 'Natuna Sea', lat: 4.0, lng: 108.0, labelAlign: 'left', coords: '4.0° N, 108.0° E' },
+  { name: 'East Kalimantan', lat: -1.0, lng: 117.5, labelAlign: 'right', coords: '1.0° S, 117.5° E' },
+  { name: 'Madura Strait', lat: -7.5, lng: 113.5, labelAlign: 'left', coords: '7.5° S, 113.5° E' },
+  { name: 'Malacca Strait', lat: 3.5, lng: 99.0, labelAlign: 'right', coords: '3.5° N, 99.0° E' },
+  { name: 'Sunda Asri', lat: -5.8, lng: 106.5, labelAlign: 'left', coords: '5.8° S, 106.5° E' },
+  { name: 'Makassar Strait', lat: -1.5, lng: 118.8, labelAlign: 'right', coords: '1.5° S, 118.8° E' }
 ]
 
 const getActiveCoords = computed(() => {
@@ -753,9 +564,136 @@ const copyJson = async () => {
   }
 }
 
+// Map variables
+let map: any = null
+let markers: { [key: string]: any } = {}
+let activeIcon: any = null
+let inactiveIcon: any = null
+
+const initMap = () => {
+  const L = (window as any).L
+  if (!L || map) return
+
+  map = L.map('map-viewport', {
+    center: [-2.0, 118.0],
+    zoom: 5,
+    zoomControl: false,
+    attributionControl: false
+  })
+
+  // Add Zoom control to top-right
+  L.control.zoom({ position: 'topright' }).addTo(map)
+
+  // Add CartoDB Positron tile layer
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 7,
+    minZoom: 4
+  }).addTo(map)
+
+  // Define marker icons
+  activeIcon = L.divIcon({
+    className: 'custom-leaflet-marker active-marker',
+    html: `<div class="marker-dot"></div>`,
+    iconSize: [12, 12],
+    iconAnchor: [6, 6]
+  })
+
+  inactiveIcon = L.divIcon({
+    className: 'custom-leaflet-marker inactive-marker',
+    html: `<div class="marker-dot"></div>`,
+    iconSize: [10, 10],
+    iconAnchor: [5, 5]
+  })
+
+  // Add markers
+  locationsData.forEach(loc => {
+    const isSelected = store.selectedLocation === loc.name
+    const marker = L.marker([loc.lat, loc.lng], {
+      icon: isSelected ? activeIcon : inactiveIcon,
+      title: loc.name
+    }).addTo(map)
+
+    // Bind tooltip for the label
+    marker.bindTooltip(loc.name, {
+      permanent: true,
+      direction: loc.labelAlign === 'left' ? 'left' : 'right',
+      className: `map-label-tooltip ${isSelected ? 'active-tooltip' : 'inactive-tooltip'}`,
+      offset: loc.labelAlign === 'left' ? [-10, 0] : [10, 0]
+    })
+
+    // Click handler
+    marker.on('click', () => {
+      store.selectedLocation = loc.name
+    })
+
+    markers[loc.name] = marker
+  })
+}
+
+// Watch selectedLocation and update leaflet markers
+watch(() => store.selectedLocation, (newLoc) => {
+  if (!map) return
+  const L = (window as any).L
+  if (!L) return
+
+  locationsData.forEach(loc => {
+    const marker = markers[loc.name]
+    if (marker) {
+      const isSelected = newLoc === loc.name
+      marker.setIcon(isSelected ? activeIcon : inactiveIcon)
+      
+      const tooltip = marker.getTooltip()
+      if (tooltip) {
+        const element = tooltip.getElement()
+        if (element) {
+          if (isSelected) {
+            element.classList.add('active-tooltip')
+            element.classList.remove('inactive-tooltip')
+          } else {
+            element.classList.remove('active-tooltip')
+            element.classList.add('inactive-tooltip')
+          }
+        }
+      }
+    }
+  })
+})
+
+// Trigger invalidateSize when activeTab changes to Location
+watch(activeTab, (newTab) => {
+  if (newTab === 'Location' && map) {
+    setTimeout(() => {
+      map.invalidateSize()
+    }, 150)
+  }
+})
+
 // Fetch scenarios on mount, which will trigger auto-selecting the first scenario
 onMounted(async () => {
   await store.fetchScenarios()
+
+  if (process.client) {
+    // Inject Leaflet CSS
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link')
+      link.id = 'leaflet-css'
+      link.rel = 'stylesheet'
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+      document.head.appendChild(link)
+    }
+
+    // Inject Leaflet JS
+    if (!(window as any).L) {
+      const script = document.createElement('script')
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+      script.onload = () => {
+        initMap()
+      }
+      document.body.appendChild(script)
+    } else {
+      initMap()
+    }
+  }
 })
 </script>
 
@@ -831,21 +769,7 @@ onMounted(async () => {
   border: 1.5px solid #a3c96c;
 }
 
-/* Variance Card animation border highlight */
-@keyframes border-glow {
-  0%, 100% {
-    border-color: #a3c96c;
-    box-shadow: 0 0 4px rgba(163, 201, 108, 0.2);
-  }
-  50% {
-    border-color: #ef4444;
-    box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
-  }
-}
-
-.animate-focus {
-  animation: border-glow 3s ease-in-out infinite;
-}
+/* Variance card — flat, no animation */
 
 .card-label {
   font-size: 13px;
@@ -964,50 +888,9 @@ onMounted(async () => {
   border: 1px solid #cbd5e1;
 }
 
-.indonesia-svg-map {
+.leaflet-map-viewport {
   width: 100%;
   height: 100%;
-  display: block;
-}
-
-/* Map hover rings and pulsing keyframes */
-.map-beacon {
-  transition: transform 0.2s ease;
-  cursor: pointer;
-}
-
-.map-beacon:hover {
-  transform: scale(1.05);
-}
-
-.map-beacon .hover-ring {
-  transition: fill-opacity 0.2s ease;
-}
-
-.map-beacon:hover .hover-ring {
-  fill-opacity: 0.25;
-}
-
-@keyframes map-pulse {
-  0% {
-    r: 8px;
-    opacity: 1;
-  }
-  100% {
-    r: 22px;
-    opacity: 0;
-  }
-}
-
-.pulse-ring {
-  transform-origin: center;
-  animation: map-pulse 1.8s cubic-bezier(0.24, 0, 0.38, 1) infinite;
-}
-
-.beacon-label {
-  transition: font-size 0.2s, font-weight 0.2s, fill 0.2s;
-  pointer-events: none;
-  user-select: none;
 }
 
 /* Map coordinates info overlay card */
@@ -1015,6 +898,7 @@ onMounted(async () => {
   position: absolute;
   bottom: 16px;
   left: 16px;
+  z-index: 500;
   background-color: rgba(255, 255, 255, 0.95);
   border: 1px solid #cbd5e1;
   border-radius: var(--border-radius-sm);
@@ -2086,5 +1970,72 @@ onMounted(async () => {
   .results-label {
     font-size: 40px;
   }
+}
+</style>
+
+<!-- Global (non-scoped) styles: Leaflet injects DOM outside Vue's shadow,
+     so scoped CSS cannot reach the marker and tooltip elements. -->
+<style>
+/* =============================================
+   LEAFLET CUSTOM MARKERS
+   ============================================= */
+
+/* Strip Leaflet's default marker background */
+.custom-leaflet-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Inactive marker dot — slate */
+.inactive-marker .marker-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #64748b;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+}
+
+/* Active marker dot — coral/red brand color */
+.active-marker .marker-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 1px 6px rgba(239, 68, 68, 0.45);
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+}
+
+/* =============================================
+   LEAFLET TOOLTIP LABELS (permanent, no arrow)
+   ============================================= */
+.map-label-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-family: 'Poppins', 'Inter', sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  white-space: nowrap;
+  padding: 0 !important;
+}
+
+/* Remove the Leaflet tooltip triangle arrow */
+.map-label-tooltip::before {
+  display: none !important;
+}
+
+.inactive-tooltip {
+  color: #64748b !important;
+}
+
+.active-tooltip {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  font-size: 12px !important;
 }
 </style>

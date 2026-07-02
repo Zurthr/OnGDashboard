@@ -1,13 +1,14 @@
-<template >
-  <Sidebar />\
+<template>
+  <Sidebar />
 
-  <div style="justify-content:center; display:flex; flex-direction:row;">
-          <StickyNav />
-      <NuxtPage />
+  <div style="display: flex; flex-direction: row; justify-content: center;">
+    <StickyNav />
+    <NuxtPage />
   </div>
 </template>
 
 <script setup lang="ts">
+import Sidebar from '~/components/Sidebar.vue'
 import StickyNav from '~/components/StickyNav.vue'
 </script>
 
