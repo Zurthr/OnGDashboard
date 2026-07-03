@@ -1,5 +1,4 @@
 <template>
-  <aside class="sidebar-host">
     <div class="sidebar-card">
 
       <!-- ── Logo ─────────────────────────────────── -->
@@ -75,7 +74,6 @@
       </div>
 
     </div>
-  </aside>
 </template>
 
 <script setup lang="ts">
@@ -84,27 +82,19 @@
 
 <style scoped>
 /* ── Fixed rail — full-height, vertically centers the card ──── */
-.sidebar-host {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 240px;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  pointer-events: none;       /* transparent to clicks outside the card */
-}
 
 /* ── Floating card ──────────────────────────────────────────── */
 .sidebar-card {
   pointer-events: all;
-  position: relative;
-  width: 210px;
+  position: sticky;
+  width: 240px;
+  min-width:240px;
   height: 80vh;
+  top:80px;
+  margin-top: 80px;
   background: #ffffff;
-  border-radius: 20px;
+  max-height:880px;
+  border-radius: 24px;
   padding: 24px 14px;
   display: flex;
   flex-direction: column;
@@ -113,23 +103,20 @@
     0 8px 32px rgba(0, 0, 0, 0.08),
     0 2px 6px  rgba(0, 0, 0, 0.04);
   overflow: hidden;
+  margin-left:-240px;
 }
 
 /* Gradient border via pseudo-element mask */
 .sidebar-card::before {
+    height: 80vh;
+      max-height:880px;
+
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 20px;
+  border-radius: 24px;
   padding: 1.5px;
-  background: linear-gradient(
-    180deg,
-    #ef4444 0%,
-    #fb923c 20%,
-    #facc15 50%,
-    #84cc16 75%,
-    #22c55e 100%
-  );
+  background: var(--platform);
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);

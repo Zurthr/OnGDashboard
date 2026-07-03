@@ -7,17 +7,17 @@
         <h2 class="section-title">At a Glance</h2>
         <div class="scorecard-row">
           <!-- Card 1: Cost Basis (USD) -->
-          <div class="scorecard-card neutral-card">
+          <div class="scorecard-card neutral-card" style="min-width:164px">
             <span class="card-label">Cost Basis (USD)</span>
             <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
-            <span v-else class="card-val num-font">{{ formatCostBasisTotal(store.summaryFindings.baselineTotal) }}</span>
+            <span v-else class="card-val num-font">{{ formatCurrency(store.summaryFindings.baselineTotal) }}</span>
             <span class="card-subtitle">
               <span class="subtext-bold">1,097</span> <span class="subtext-unit">US$/ft</span>
             </span>
           </div>
 
           <!-- Card 2: Forecasted (USD) -->
-          <div class="scorecard-card pink-card">
+          <div class="scorecard-card pink-card" style="min-width:164px">
             <span class="card-label">Forecasted (USD)</span>
             <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
             <span v-else class="card-val num-font">{{ formatCurrency(store.summaryFindings.forecastTotal) }}</span>
@@ -27,26 +27,25 @@
           </div>
 
           <!-- Card 3: Variance -->
-          <div class="scorecard-card variance-card">
+          <div class="scorecard-card variance-card" style="min-width:164px">
             <span class="card-label">Variance</span>
             <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
             <span v-else class="card-val num-font">{{ formatCurrency(store.summaryFindings.absoluteVarianceTotal) }}</span>
             <span class="card-subtitle">
               <span class="subtext-bold">1,097</span> <span class="subtext-unit">US$/ft</span>
             </span>
-            <div v-if="!store.loadingDetails" class="severity-badge-container">
-              <span class="severity-pill" :class="getSeverityBadgeClass(store.summaryFindings.percentageDeviationTotal)">
-                {{ getSeverityLabel(store.summaryFindings.percentageDeviationTotal) }}
-              </span>
-            </div>
           </div>
 
           <!-- Card 4: Deviation of -->
           <div class="scorecard-card neutral-card">
-            <span class="card-label">Deviation of</span>
+            <span class="card-label">% Deviation</span>
             <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
             <span v-else class="card-val num-font">{{ store.summaryFindings.percentageDeviationTotal }}%</span>
-            <span class="card-subtitle">of total cost basis</span>
+            <div v-if="!store.loadingDetails" class="severity-badge-container">
+              <span class="severity-pill" :class="getSeverityBadgeClass(store.summaryFindings.percentageDeviationTotal)">
+                {{ getSeverityLabel(store.summaryFindings.percentageDeviationTotal) }}
+              </span>
+            </div>          
           </div>
 
           <!-- Card 5: Dominant Driver -->
@@ -145,7 +144,7 @@
             <div class="col-header-block">
               <span class="col-header-label">Cost Basis</span>
               <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse header-skeleton"></div>
-              <span v-else class="col-header-value num-font">{{ formatCostBasisTotal(store.summaryFindings.baselineTotal) }}</span>
+              <span v-else class="col-header-value num-font">{{ formatCurrency(store.summaryFindings.baselineTotal) }}</span>
               <span class="col-header-subtext">
                 <span class="subtext-bold num-font">1,097</span> <span class="subtext-unit">US$/ft</span>
               </span>
@@ -772,8 +771,8 @@ onMounted(async () => {
 /* Variance card — flat, no animation */
 
 .card-label {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   color: #64748b;
   margin-bottom: 6px;
   text-transform: capitalize;
@@ -781,7 +780,7 @@ onMounted(async () => {
 
 .card-val {
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 700;
   color: #0f172a;
   line-height: 1.1;
   letter-spacing: -0.5px;

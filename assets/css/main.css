@@ -45,6 +45,7 @@
   --border-radius-lg: 16px;
   --border-radius-md: 12px;
   --border-radius-sm: 8px;
+  --platform: linear-gradient(320deg, #BED630 5.4%, #F99 48%, #FC3737 99%);
 }
 
 /* Reset & Base Styles */
@@ -102,7 +103,6 @@ a {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Skeleton Loading Helpers */
 .skeleton-bar {
   background: linear-gradient(90deg, #e2e8f0 25%, #cbd5e1 50%, #e2e8f0 75%);
   background-size: 200% 100%;
@@ -117,4 +117,8 @@ a {
   100% {
     background-position: -200% 0;
   }
+}
+
+.platform {
+  background: linear-gradient(320deg, #BED630 5.4%, #F99 48%, #FC3737 99%)
 }

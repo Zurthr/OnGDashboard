@@ -1,9 +1,11 @@
 <template>
+  <div style="display:flex; width:100vw; max-width:2040px; justify-content:center; flex-direction: row; justify-self:center;">
   <Sidebar />
 
-  <div style="display: flex; flex-direction: row; justify-content: center;">
+  <div style="display: grid; flex-direction: row; justify-content: center;">
     <StickyNav />
     <NuxtPage />
+  </div>
   </div>
 </template>
 

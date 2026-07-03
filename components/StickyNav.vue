@@ -213,8 +213,8 @@ onBeforeUnmount(() => {
 .sticky-nav-wrapper {
   position: fixed;
   top: 0;
-  margin:0 auto;
-  z-index: 9;
+  justify-self:center;
+  z-index: 1000;
   /* Frosted glass background */
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(16px) saturate(1.6);
