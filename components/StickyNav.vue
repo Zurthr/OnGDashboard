@@ -211,6 +211,7 @@ onBeforeUnmount(() => {
 <style scoped>
 /* ─── WRAPPER ─────────────────────────────────────────── */
 .sticky-nav-wrapper {
+  margin-top:-2px;
   position: fixed;
   top: 0;
   justify-self:center;
@@ -219,14 +220,15 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(16px) saturate(1.6);
   -webkit-backdrop-filter: blur(16px) saturate(1.6);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  border: 2px solid rgba(255, 153, 153, 0.397);
   box-shadow: 0 2px 24px rgba(0, 0, 0, 0.06);
   /* Smooth slide transition */
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
               opacity 0.3s ease;
   will-change: transform;
-  border-radius:12px;
+  border-radius:0 0 12px 12px;
 }
+
 
 .nav-visible {
   transform: translateY(0);
@@ -245,7 +247,7 @@ onBeforeUnmount(() => {
   padding: 12px 32px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: nowrap;
   overflow-x: auto;
   justify-content:center;

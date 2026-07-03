@@ -110,7 +110,6 @@
 .sidebar-card::before {
     height: 80vh;
       max-height:880px;
-
   content: '';
   position: absolute;
   inset: 0;
@@ -124,6 +123,7 @@
   mask-composite: exclude;
   pointer-events: none;
   z-index: 0;
+  opacity: 0.4;
 }
 
 /* Keep children above the pseudo-border */

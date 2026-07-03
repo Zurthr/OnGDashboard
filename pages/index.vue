@@ -1389,7 +1389,7 @@ onMounted(async () => {
 
 .card-name {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   color: #0f172a;
   line-height: 1.3;
 }
