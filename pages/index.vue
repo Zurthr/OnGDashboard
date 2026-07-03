@@ -739,11 +739,11 @@ onMounted(async () => {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: var(--border-radius-md);
-  padding: 18px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  min-height: 120px;
+  min-height: 100px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -791,7 +791,7 @@ onMounted(async () => {
   font-size: 12px;
   font-weight: 500;
   color: #64748b;
-  margin-top: auto;
+  margin-top: 4px;
 }
 
 .subtext-bold {
@@ -811,14 +811,14 @@ onMounted(async () => {
 
 /* Severity Pill inside Variance Card */
 .severity-badge-container {
-  margin-top: 6px;
+  margin-top:0;
 }
 
 .severity-pill {
   font-family: var(--font-family);
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 8px;
   border-radius: 99px;
   display: inline-block;
   text-transform: capitalize;
