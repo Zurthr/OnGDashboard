@@ -5,15 +5,16 @@
     </div>
 
     <div class="panel-content-card">
-      <!-- ── Tab content: v-if mounts/unmounts each child fresh ── -->
+      <!-- ── Tab content ── -->
       <div class="tab-panel-content">
-        <LocationTab  v-if="activeTab === 'Location'"  />
-        <VarianceTab  v-if="activeTab === 'Variance'"  />
-        <TreemapTab   v-if="activeTab === 'Treemap'"   />
+        <LocationTab v-if="activeTab === 'Location'" />
+        <VarianceTab v-if="activeTab === 'Variance'" />
+        <TreemapTab  v-if="activeTab === 'Treemap'"  :mode="treemapMode" />
       </div>
 
       <!-- ── Tab bar ── -->
       <div class="tab-bar-row">
+        <!-- Tab buttons -->
         <div class="tab-buttons">
           <button
             v-for="tab in tabs"
@@ -25,6 +26,22 @@
             {{ tab }}
           </button>
         </div>
+
+        <!-- Treemap mode switcher — only visible when Treemap tab is active -->
+        <Transition name="fade-slide">
+          <div v-if="activeTab === 'Treemap'" class="treemap-mode-switcher">
+            <span class="mode-label">View:</span>
+            <button
+              v-for="m in treemapModes"
+              :key="m.value"
+              class="mode-btn"
+              :class="{ 'mode-btn--active': treemapMode === m.value }"
+              @click="treemapMode = m.value"
+            >
+              {{ m.label }}
+            </button>
+          </div>
+        </Transition>
       </div>
     </div>
   </div>
@@ -38,6 +55,14 @@ import TreemapTab  from '~/components/Forecast/tabs/TreemapTab.vue'
 
 const tabs = ['Location', 'Variance', 'Treemap'] as const
 const activeTab = ref<typeof tabs[number]>('Location')
+
+type TreemapMode = 'variance' | 'baseline' | 'forecast'
+const treemapMode  = ref<TreemapMode>('variance')
+const treemapModes: { label: string; value: TreemapMode }[] = [
+  { label: 'Variance',  value: 'variance'  },
+  { label: 'Baseline',  value: 'baseline'  },
+  { label: 'Forecast',  value: 'forecast'  },
+]
 </script>
 
 <style scoped>
@@ -51,15 +76,8 @@ const activeTab = ref<typeof tabs[number]>('Location')
   flex-shrink: 0;
 }
 
-.panel-header {
-  margin-bottom: 12px;
-}
-
-.panel-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #475569;
-}
+.panel-header { margin-bottom: 12px; }
+.panel-title  { font-size: 16px; font-weight: 600; color: #475569; }
 
 .panel-content-card {
   background-color: #ffffff;
@@ -72,21 +90,19 @@ const activeTab = ref<typeof tabs[number]>('Location')
   gap: 16px;
 }
 
-.tab-panel-content {
-  width: 100%;
-}
+.tab-panel-content { width: 100%; }
 
 /* ── Tab bar ── */
 .tab-bar-row {
   display: flex;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: space-between;
   border-top: 1px solid #f1f5f9;
+  padding-top: 12px;
+  gap: 12px;
 }
 
-.tab-buttons {
-  display: flex;
-  gap: 8px;
-}
+.tab-buttons { display: flex; gap: 8px; }
 
 .tab-btn {
   background: #f1f5f9;
@@ -101,14 +117,59 @@ const activeTab = ref<typeof tabs[number]>('Location')
   transition: all 0.2s ease;
 }
 
-.tab-btn:hover {
-  background: #e2e8f0;
-  color: #334155;
-}
+.tab-btn:hover { background: #e2e8f0; color: #334155; }
 
 .tab-btn.active-tab {
   background: var(--platform2);
-  color: #333333;
+  color: #261812;
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
 }
+
+/* ── Treemap mode switcher ── */
+.treemap-mode-switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 99px;
+  padding: 4px 8px 4px 10px;
+}
+
+.mode-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+
+.mode-btn {
+  background: transparent;
+  border: none;
+  border-radius: 99px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.mode-btn:hover { background: #e2e8f0; color: #334155; }
+
+.mode-btn--active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Transition for switcher appearing ── */
+.fade-slide-enter-active { transition: all 0.2s ease; }
+.fade-slide-leave-active { transition: all 0.15s ease; }
+.fade-slide-enter-from   { opacity: 0; transform: translateX(8px); }
+.fade-slide-leave-to     { opacity: 0; transform: translateX(8px); }
 </style>
