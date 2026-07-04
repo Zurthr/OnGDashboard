@@ -24,6 +24,11 @@
         <component :is="VChart" v-if="VChart" :option="chartOption1" class="echart-instance" />
         <div v-else class="chart-loading">Loading chart…</div>
       </div>
+      <!-- Legend -->
+      <div class="bar-legend">
+        <div class="legend-item"><span class="color-box" style="background:#D85A30"></span><span>Baseline</span></div>
+        <div class="legend-item"><span class="color-box" style="background:#a3c96c"></span><span>Deviation</span></div>
+      </div>
     </div>
 
     <!-- Card 2: Waterfall: Deviations -->
@@ -57,7 +62,7 @@
             <Icon name="heroicons:chart-pie-20-solid" class="card-title-icon" />
             <h3 class="card-chart-title">Pie Chart on Deviations</h3>
           </div>
-          <span class="card-chart-subtitle">Proportional contribution of each cost category to the total forecasted cost.</span>
+          <span class="card-chart-subtitle">Proportional contribution of each cost category</span>
         </div>
       </div>
       <div class="chart-wrapper">
@@ -151,11 +156,11 @@ const chartOption1 = computed(() => {
       formatter: (params: any) => {
         const base = params[0].value, dev = params[1].value
         return `
-          <div style="font-family:var(--font-family);font-size:11px;padding:4px;line-height:1.5;">
+          <div style="font-family:var(--font-family);font-size:11px;padding:4px;line-height:1.8;">
             <strong style="color:#0f172a;font-size:12px;margin-bottom:4px;display:inline-block;">Category: ${params[0].name}</strong><br/>
-            <span style="color:#64748b;">Baseline:</span> $${fmt(base)}<br/>
-            <span style="color:#64748b;">Deviation:</span> $${fmt(dev)}<br/>
-            <strong style="color:#D85A30;">Forecast:</strong> $${fmt(base + dev)}
+            <span style="color:#D85A30;font-weight:600;">Baseline:</span> $${fmt(base)}<br/>
+            <span style="color:#a3c96c;font-weight:600;">Deviation:</span> $${fmt(dev)}<br/>
+            <span style="color:#475569;font-weight:600;">Forecast:</span> $${fmt(base + dev)}
           </div>`
       },
     },
@@ -176,7 +181,7 @@ const chartOption1 = computed(() => {
       },
     },
     series: [
-      { name: 'Baseline',  type: 'bar', stack: 'total', barWidth: '55%', itemStyle: { color: '#D85A30' }, data: baselineData },
+      { name: 'Baseline',  type: 'bar', stack: 'total', barWidth: '55%', barCategoryGap: '4%', itemStyle: { color: '#D85A30' }, data: baselineData },
       { name: 'Deviation', type: 'bar', stack: 'total', barWidth: '55%', itemStyle: { color: '#a3c96c' }, data: deviationData },
     ],
   }
@@ -248,12 +253,12 @@ const chartOption2 = computed(() => {
     },
     series: [
       {
-        name: 'Placeholder', type: 'bar', stack: 'all',
+        name: 'Placeholder', type: 'bar', stack: 'all', barCategoryGap: '4%',
         itemStyle: { borderColor: 'transparent', color: 'transparent' },
         emphasis: { itemStyle: { borderColor: 'transparent', color: 'transparent' } },
         data: wf.placeholder,
       },
-      { name: 'Value', type: 'bar', stack: 'all', barWidth: '60%', itemStyle: { borderRadius: 3 }, data: wf.visibleData },
+      { name: 'Value', type: 'bar', stack: 'all', barWidth: '55%', itemStyle: { borderRadius: 3 }, data: wf.visibleData },
     ],
   }
 })
@@ -286,12 +291,12 @@ const chartOption3 = computed(() => {
 })
 
 const pieLegendItems = [
-  { label: 'Substruct.', color: '#fca5a5' },
-  { label: 'Pipeline',   color: '#D85A30' },
+  { label: 'Sub.', color: '#fca5a5' },
+  { label: 'Pipe.',   color: '#D85A30' },
   { label: 'Product.',   color: '#a3c96c' },
   { label: 'C&F',        color: '#f97316' },
-  { label: 'Dec Str.',   color: '#3f6212' },
-  { label: 'General Sup.', color: '#fb923c' },
+  { label: 'Deck',   color: '#3f6212' },
+  { label: 'G Sup.', color: '#fb923c' },
 ]
 </script>
 
@@ -353,6 +358,7 @@ const pieLegendItems = [
 .chart-loading { height: 220px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 13px; }
 
 /* Legends */
+.bar-legend,
 .waterfall-legend,
 .pie-legend {
   display: flex;

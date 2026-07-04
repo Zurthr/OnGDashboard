@@ -46,8 +46,8 @@ const activeTab = ref<typeof tabs[number]>('Location')
    ============================================= */
 .visualization-panel {
   margin-bottom: 36px;
-  width: 1024px;
-  max-width: 1024px;
+  width: 1064px;
+  max-width: 1064px;
   flex-shrink: 0;
 }
 
