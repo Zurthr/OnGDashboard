@@ -1,4 +1,5 @@
 <template>
+      <StickyNav />
   <div class="container">
     <GlanceScorecard />
     <LocationMap />
@@ -39,7 +40,7 @@ useHead({
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  padding: 32px 40px 80px;
+  padding: 80px 40px 80px;
   background-color: #f4f4f0;
 }
 </style>
