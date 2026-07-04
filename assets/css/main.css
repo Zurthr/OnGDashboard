@@ -6,7 +6,7 @@
   --color-bg-card: #ffffff;
   --color-text-main: #0f172a;
   --color-text-muted: #64748b;
-  
+
   /* Accent Colors */
   --color-primary: #10b981;
   --color-primary-hover: #059669;
@@ -21,7 +21,7 @@
   /* Specific Layout Colors (replicating visual reference) */
   --color-card-basis-border: #fee2e2;
   --color-card-basis-bg: #fffafb;
-  
+
   --color-card-forecast-border: #f3f4f6;
   --color-card-forecast-bg: #ffffff;
 
@@ -32,11 +32,11 @@
   --gradient-green-card: linear-gradient(180deg, #eef7e6 0%, #dbedd0 100%);
   --gradient-text-ari: linear-gradient(90deg, #e11d48 0%, #db2777 50%, #ea580c 100%);
   --gradient-ari-border: linear-gradient(135deg, #f43f5e 0%, #ec4899 50%, #f97316 100%);
-  
+
   /* Fonts */
   --font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-number: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
+
   /* Shadow & Borders */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
@@ -45,11 +45,22 @@
   --border-radius-lg: 16px;
   --border-radius-md: 12px;
   --border-radius-sm: 8px;
+
+  --skk-red: #9C1D1E;
+  --skk-green: #BED630;
+  --green-gradient: #B6D01E4D;
+  --red-gradient: inear-gradient(17deg, rgba(254, 144, 132, 0.30) 45.23%, rgba(255, 255, 255, 0.00) 111.56%);
+
+  --platform2: linear-gradient(133deg, #FC7A7A -2.89%, #FC7A7A 6.11%, #FFBDBD 43.99%, #FAFEA6 104.99%);
+
+
   --platform: linear-gradient(320deg, #BED630 5.4%, #F99 48%, #FC3737 99%);
 }
 
 /* Reset & Base Styles */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -91,9 +102,12 @@ a {
 
 /* Animations */
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: .5;
   }
@@ -114,6 +128,7 @@ a {
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }
