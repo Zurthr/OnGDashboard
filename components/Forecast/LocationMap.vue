@@ -32,9 +32,9 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import LocationTab from '~/components/dashboard/tabs/LocationTab.vue'
-import VarianceTab from '~/components/dashboard/tabs/VarianceTab.vue'
-import TreemapTab  from '~/components/dashboard/tabs/TreemapTab.vue'
+import LocationTab from '~/components/Forecast/tabs/LocationTab.vue'
+import VarianceTab from '~/components/Forecast/tabs/VarianceTab.vue'
+import TreemapTab  from '~/components/Forecast/tabs/TreemapTab.vue'
 
 const tabs = ['Location', 'Variance', 'Treemap'] as const
 const activeTab = ref<typeof tabs[number]>('Location')
@@ -81,7 +81,6 @@ const activeTab = ref<typeof tabs[number]>('Location')
   display: flex;
   justify-content: flex-start;
   border-top: 1px solid #f1f5f9;
-  padding-top: 14px;
 }
 
 .tab-buttons {
@@ -109,7 +108,7 @@ const activeTab = ref<typeof tabs[number]>('Location')
 
 .tab-btn.active-tab {
   background: var(--platform2);
-  color: #261812;
+  color: #333333;
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
 }
 </style>

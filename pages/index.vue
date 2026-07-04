@@ -9,11 +9,11 @@
 </template>
 
 <script setup lang="ts">
-import GlanceScorecard from '~/components/dashboard/GlanceScorecard.vue'
-import LocationMap from '~/components/dashboard/LocationMap.vue'
-import CompareResults from '~/components/dashboard/CompareResults.vue'
-import AriInsights from '~/components/dashboard/AriInsights.vue'
-import DevTools from '~/components/dashboard/DevTools.vue'
+import GlanceScorecard from '~/components/Forecast/GlanceScorecard.vue'
+import LocationMap from '~/components/Forecast/LocationMap.vue'
+import CompareResults from '~/components/Forecast/CompareResults.vue'
+import AriInsights from '~/components/Forecast/AriInsights.vue'
+import DevTools from '~/components/Forecast/DevTools.vue'
 
 // Title SEO meta tags
 useHead({

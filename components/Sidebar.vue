@@ -40,7 +40,7 @@
             <line x1="10.5" y1="6.75" x2="13.5" y2="6.75" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
             <line x1="10.5" y1="17.25" x2="13.5" y2="17.25" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
-          <span class="nav-label">Forecast &amp; Compare</span>
+          <span class="nav-label">Forecast Eng.</span>
         </button>
       </div>
 
@@ -87,15 +87,15 @@
 .sidebar-card {
   pointer-events: all;
   position: sticky;
-  width: 240px;
-  min-width: 240px;
+  width: 200px;
+  min-width: 200px;
   height: 80vh;
   top: 80px;
   margin-top: 80px;
   background: #ffffff;
   max-height: 880px;
   border-radius: 24px;
-  padding: 24px 14px;
+  padding: 24px 12px;
   display: flex;
   flex-direction: column;
   gap: 22px;
@@ -103,7 +103,7 @@
     0 8px 32px rgba(0, 0, 0, 0.08),
     0 2px 6px  rgba(0, 0, 0, 0.04);
   overflow: hidden;
-  margin-left: -240px;
+  margin-left: -180px;
   z-index: 10000;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
 }
@@ -115,7 +115,7 @@
     left: 14px;
     margin-left: 0; /* Reset negative margin from sticky layout */
     margin-top: 0;
-    transform: translateY(-50%) translateX(-220px); /* Leave a 20px visible tab handle on the left edge */
+    transform: translateY(-50%) translateX(-180px); /* Leave a 20px visible tab handle on the left edge */
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
   }
 
