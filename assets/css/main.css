@@ -49,10 +49,9 @@
   --skk-red: #9C1D1E;
   --skk-green: #BED630;
   --green-gradient: #B6D01E4D;
-  --red-gradient: inear-gradient(17deg, rgba(254, 144, 132, 0.30) 45.23%, rgba(255, 255, 255, 0.00) 111.56%);
+  --red-gradient: linear-gradient(17deg, rgba(254, 144, 132, 0.30) 45.23%, rgba(255, 255, 255, 0.00) 111.56%);
 
   --platform2: linear-gradient(133deg, #FC7A7A -2.89%, #FC7A7A 6.11%, #FFBDBD 43.99%, #FAFEA6 104.99%);
-
 
   --platform: linear-gradient(320deg, #BED630 5.4%, #F99 48%, #FC3737 99%);
 }

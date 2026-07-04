@@ -3,7 +3,6 @@
   <Sidebar />
 
   <div style="display: grid; flex-direction: row; justify-content: center; max-width:1360px; width: 1140px;">
-    <StickyNav />
     <NuxtPage />
   </div>
   </div>
