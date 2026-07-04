@@ -88,12 +88,12 @@
   pointer-events: all;
   position: sticky;
   width: 240px;
-  min-width:240px;
+  min-width: 240px;
   height: 80vh;
-  top:80px;
+  top: 80px;
   margin-top: 80px;
   background: #ffffff;
-  max-height:880px;
+  max-height: 880px;
   border-radius: 24px;
   padding: 24px 14px;
   display: flex;
@@ -103,13 +103,39 @@
     0 8px 32px rgba(0, 0, 0, 0.08),
     0 2px 6px  rgba(0, 0, 0, 0.04);
   overflow: hidden;
-  margin-left:-240px;
+  margin-left: -240px;
+  z-index: 10000;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+}
+
+@media (max-width: 1440px) {
+  .sidebar-card {
+    position: fixed;
+    top: 50%;
+    left: 14px;
+    margin-left: 0; /* Reset negative margin from sticky layout */
+    margin-top: 0;
+    transform: translateY(-50%) translateX(-220px); /* Leave a 20px visible tab handle on the left edge */
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Reveal entirely when hovered or clicked/active */
+  .sidebar-card:hover,
+  .sidebar-card:focus-within,
+  .sidebar-card:active {
+    transform: translateY(-50%) translateX(0);
+    box-shadow: 12px 0 40px rgba(0, 0, 0, 0.25);
+  }
+  
+  /* Make the border match the container height when positioned fixed */
+  .sidebar-card::before {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
 }
 
 /* Gradient border via pseudo-element mask */
 .sidebar-card::before {
-    height: 80vh;
-      max-height:880px;
   content: '';
   position: absolute;
   inset: 0;

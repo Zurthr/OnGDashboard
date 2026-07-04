@@ -96,7 +96,7 @@ const activeTab = ref<typeof tabs[number]>('Location')
   padding: 8px 18px;
   font-size: 13px;
   font-weight: 600;
-  color: #64748b;
+  color: #333333;
   cursor: pointer;
   outline: none;
   transition: all 0.2s ease;
@@ -108,8 +108,8 @@ const activeTab = ref<typeof tabs[number]>('Location')
 }
 
 .tab-btn.active-tab {
-  background: linear-gradient(135deg, #fb923c, #ef4444);
-  color: #ffffff;
+  background: var(--platform2);
+  color: #261812;
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
 }
 </style>
