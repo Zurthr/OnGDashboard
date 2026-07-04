@@ -5,11 +5,13 @@
     </div>
 
     <div class="panel-content-card">
-      <!-- ── Tab content ── -->
-      <div class="tab-panel-content">
-        <LocationTab v-if="activeTab === 'Location'" />
-        <VarianceTab v-if="activeTab === 'Variance'" />
-        <TreemapTab  v-if="activeTab === 'Treemap'"  :mode="treemapMode" />
+      <!-- ── Tab content with animated height container ── -->
+      <div class="tab-panel-content animate-height" :style="{ minHeight: activeTabHeight }">
+        <Transition name="tab-fade" mode="out-in">
+          <LocationTab v-if="activeTab === 'Location'" />
+          <VarianceTab v-else-if="activeTab === 'Variance'" />
+          <TreemapTab  v-else-if="activeTab === 'Treemap'"  :mode="treemapMode" />
+        </Transition>
       </div>
 
       <!-- ── Tab bar ── -->
@@ -48,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import LocationTab from '~/components/Forecast/tabs/LocationTab.vue'
 import VarianceTab from '~/components/Forecast/tabs/VarianceTab.vue'
 import TreemapTab  from '~/components/Forecast/tabs/TreemapTab.vue'
@@ -63,6 +65,13 @@ const treemapModes: { label: string; value: TreemapMode }[] = [
   { label: 'Baseline',  value: 'baseline'  },
   { label: 'Forecast',  value: 'forecast'  },
 ]
+
+// Dynamic height matching each active tab layout to enable smooth parent container transitions
+const activeTabHeight = computed(() => {
+  if (activeTab.value === 'Location') return '402px'
+  if (activeTab.value === 'Variance') return '340px'
+  return '480px' // Treemap fixed height
+})
 </script>
 
 <style scoped>
@@ -90,7 +99,31 @@ const treemapModes: { label: string; value: TreemapMode }[] = [
   gap: 16px;
 }
 
-.tab-panel-content { width: 100%; }
+.tab-panel-content {
+  width: 100%;
+  position: relative;
+}
+
+.animate-height {
+  transition: min-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+/* ── Tab Switch transitions ── */
+.tab-fade-enter-active,
+.tab-fade-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab-fade-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.tab-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-12px);
+}
 
 /* ── Tab bar ── */
 .tab-bar-row {
