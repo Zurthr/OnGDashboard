@@ -20,7 +20,7 @@
         <span class="nav-section-label">Platform</span>
 
         <!-- Dashboard -->
-        <button class="nav-item nav-item--active">
+        <NuxtLink to="/" class="nav-item" :class="{ 'nav-item--active': route.path === '/' }">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="3" y="3" width="8" height="8" rx="2" fill="#fb923c"/>
             <rect x="13" y="3" width="8" height="8" rx="2" fill="#fca5a5"/>
@@ -28,10 +28,10 @@
             <rect x="13" y="13" width="8" height="8" rx="2" fill="#ef4444"/>
           </svg>
           <span class="nav-label">Dashboard</span>
-        </button>
+        </NuxtLink>
 
         <!-- Forecast & Compare -->
-        <button class="nav-item">
+        <NuxtLink to="/forecast" class="nav-item" :class="{ 'nav-item--active': route.path === '/forecast' }">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="3"  y="3"  width="7.5" height="7.5" rx="2" fill="#fb923c"/>
             <rect x="13.5" y="3" width="7.5" height="7.5" rx="2" fill="#fca5a5"/>
@@ -41,7 +41,7 @@
             <line x1="10.5" y1="17.25" x2="13.5" y2="17.25" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
           <span class="nav-label">Forecast Eng.</span>
-        </button>
+        </NuxtLink>
       </div>
 
       <!-- ── GENERAL ───────────────────────────────── -->
@@ -49,7 +49,7 @@
         <span class="nav-section-label">General</span>
 
         <!-- Database -->
-        <button class="nav-item">
+        <NuxtLink to="/db" class="nav-item">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <ellipse cx="12" cy="5.5" rx="7" ry="2.5" fill="#fb923c"/>
             <path d="M5 5.5v5c0 1.38 3.13 2.5 7 2.5s7-1.12 7-2.5v-5" fill="#fca5a5" fill-opacity="0.6"/>
@@ -57,10 +57,10 @@
             <ellipse cx="12" cy="5.5" rx="7" ry="2.5" fill="none" stroke="#ef4444" stroke-width="1.2"/>
           </svg>
           <span class="nav-label">Database</span>
-        </button>
+        </NuxtLink>
 
         <!-- Extract Reports -->
-        <button class="nav-item">
+        <NuxtLink to="/db/extract" class="nav-item">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="4" y="3" width="14" height="18" rx="2" fill="#fca5a5" fill-opacity="0.4"/>
             <rect x="4" y="3" width="14" height="7" rx="2" fill="#fb923c"/>
@@ -70,14 +70,15 @@
                       stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           <span class="nav-label">Extract Reports</span>
-        </button>
+        </NuxtLink>
       </div>
 
     </div>
 </template>
 
 <script setup lang="ts">
-// No JS logic required — pure presentational component
+import { useRoute } from 'vue-router'
+const route = useRoute()
 </script>
 
 <style scoped>
@@ -224,6 +225,7 @@
   background: transparent;
   cursor: pointer;
   text-align: left;
+  text-decoration: none;
   transition: background 0.15s ease;
 }
 

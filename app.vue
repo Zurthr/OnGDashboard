@@ -2,7 +2,7 @@
   <div style="display:flex; width:100vw; max-width:2040px; justify-content:center; flex-direction: row; justify-self:center;">
   <Sidebar />
 
-  <div style="display: grid; flex-direction: row; justify-content: center;">
+  <div style="display: grid; flex-direction: row; justify-content: center; max-width:1360px; width: 1140px;">
     <StickyNav />
     <NuxtPage />
   </div>
