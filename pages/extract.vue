@@ -1,6 +1,5 @@
 <template>
   <div class="page">
-    <!-- ── Header ─────────────────────────────────────────── -->
     <div class="page-head">
       <div>
         <span class="eyebrow">AFE Module</span>
@@ -12,7 +11,6 @@
       </div>
     </div>
 
-    <!-- ── Upload card ────────────────────────────────────── -->
     <section class="card upload-card">
       <span class="card-bar"></span>
 
@@ -43,7 +41,6 @@
       </p>
     </section>
 
-    <!-- ── Queue ──────────────────────────────────────────── -->
     <section v-if="files.length" class="card queue-card">
       <div class="card-head">
         <div>
@@ -72,6 +69,7 @@
             <span class="status" :class="'status--' + f.status">
               <span class="dot"></span>{{ statusLabel(f.status) }}
             </span>
+            
             <div class="row-actions">
               <button
                 v-if="f.status === 'done'"
@@ -81,10 +79,20 @@
               >
                 <Icon name="heroicons:arrow-down-tray" />
               </button>
+              
               <button
+                v-if="f.status === 'processing'"
+                class="icon-btn stop-btn"
+                title="Force Cancel"
+                @click="cancelExtraction(f)"
+              >
+                <Icon name="heroicons:stop-circle" />
+              </button>
+
+              <button
+                v-if="f.status !== 'processing'"
                 class="icon-btn"
                 title="Remove"
-                :disabled="f.status === 'processing'"
                 @click="removeFile(f.id)"
               >
                 <Icon name="heroicons:x-mark" />
@@ -92,18 +100,15 @@
             </div>
           </div>
 
-          <!-- progress -->
           <div v-if="f.status === 'processing'" class="progress">
             <div class="progress-bar" :style="{ width: f.progress + '%' }"></div>
           </div>
           <p v-if="f.status === 'processing'" class="progress-stage">{{ f.stage }}</p>
 
-          <!-- error -->
           <p v-if="f.status === 'error'" class="err-msg">
             <Icon name="heroicons:exclamation-triangle" class="err-ic" /> {{ f.error }}
           </p>
 
-          <!-- result -->
           <div v-if="f.status === 'done' && f.result" class="result">
             <ExtractionResult :data="f.result" />
 
@@ -130,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h, defineComponent } from 'vue'
+import { ref, computed, h, defineComponent, onMounted, watch } from 'vue'
 
 useHead({ title: 'SKK Migas — Extract AFE Data' })
 
@@ -155,21 +160,34 @@ interface ExtractionJSON {
   }
 }
 type Status = 'queued' | 'processing' | 'done' | 'error'
+
 interface QueuedFile {
   id: string
+  jobId?: string
   name: string
   size: number
-  file: File
+  file?: File
   status: Status
   progress: number
   stage: string
   result: ExtractionJSON | null
   error: string
   showRaw: boolean
+  pollIntervalId?: any
+  timestamp: number
+}
+
+// Expected response format from the new Python API
+interface StatusResponse {
+  status: string
+  stage: string
+  progress: number
+  result?: ExtractionJSON
+  error?: string
 }
 
 /* ───────────────────────────────────────────────────────────
-   STATE
+   STATE & PERSISTENCE
    ─────────────────────────────────────────────────────────── */
 const files = ref<QueuedFile[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -178,6 +196,40 @@ const isDragging = ref(false)
 const isBusy = computed(() => files.value.some(f => f.status === 'processing'))
 const doneCount = computed(() => files.value.filter(f => f.status === 'done').length)
 const allDone = computed(() => files.value.length > 0 && files.value.every(f => f.status === 'done'))
+
+const API_BASE_URL = ''
+
+onMounted(() => {
+  const savedQueue = localStorage.getItem('afe_extraction_queue')
+  if (savedQueue) {
+    try {
+      const parsedFiles: QueuedFile[] = JSON.parse(savedQueue)
+      const now = Date.now()
+      const THREE_HOURS_MS = 3 * 60 * 60 * 1000 // 3 hours in milliseconds
+
+      // NEW: Only keep files that are younger than 3 hours
+      files.value = parsedFiles.filter(f => (now - (f.timestamp || 0)) < THREE_HOURS_MS)
+
+      // If everything was too old, clean out the storage entirely
+      if (files.value.length === 0) {
+        localStorage.removeItem('afe_extraction_queue')
+      }
+
+      files.value.forEach(f => {
+        f.pollIntervalId = undefined 
+        if (f.status === 'processing' && f.jobId) pollStatus(f)
+      })
+    } catch (e) {
+      console.error('Failed parsing saved queue:', e)
+    }
+  }
+})
+
+watch(files, (newVal) => {
+  // Strip out the non-serializable objects (File, Timer IDs) before saving
+  const clearBlobs = newVal.map(({ file, pollIntervalId, ...rest }) => rest)
+  localStorage.setItem('afe_extraction_queue', JSON.stringify(clearBlobs))
+}, { deep: true })
 
 /* ───────────────────────────────────────────────────────────
    FILE HANDLING
@@ -201,78 +253,108 @@ function addFiles(list: File[]) {
       file,
       status: 'queued',
       progress: 0,
-      stage: '',
+      stage: 'Waiting in queue',
       result: null,
       error: '',
       showRaw: false,
+      timestamp: Date.now(),
     })
   }
 }
-function removeFile(id: string) {
-  files.value = files.value.filter(f => f.id !== id)
-}
-function clearAll() {
-  if (!isBusy.value) files.value = []
-}
+function removeFile(id: string) { files.value = files.value.filter(f => f.id !== id) }
+function clearAll() { if (!isBusy.value) files.value = [] }
 
 /* ───────────────────────────────────────────────────────────
-   EXTRACTION  —  swap MOCK for the real endpoint when ready.
-   ───────────────────────────────────────────────────────────
-   REAL SETUP (later):
-   The browser cannot run your Python script directly, so you add
-   ONE tiny Nuxt server endpoint that runs it. Example:
-
-   // server/api/extract.post.ts
-   // import { writeFile, readFile, rm } from 'node:fs/promises'
-   // import { execFile } from 'node:child_process'
-   // import { promisify } from 'node:util'
-   // const run = promisify(execFile)
-   // export default defineEventHandler(async (event) => {
-   //   const form = await readMultipartFormData(event)      // the PDF
-   //   const pdf  = form.find(p => p.name === 'file')
-   //   const tmp  = `/tmp/afe-${Date.now()}.pdf`
-   //   await writeFile(tmp, pdf.data)
-   //   await run('python', ['extract.py', tmp])              // YOUR script
-   //   const json = await readFile(tmp.replace('.pdf','_extracted.json'),'utf-8')
-   //   await rm(tmp)                                         // temp cleanup
-   //   return JSON.parse(json)
-   // })
-
-   Then replace the MOCK block below with:
-   const form = new FormData(); form.append('file', file.file)
-   return await $fetch<ExtractionJSON>('/api/extract', { method:'POST', body: form })
+   API NETWORK ACTIONS
    ─────────────────────────────────────────────────────────── */
-
-async function runExtraction(f: QueuedFile): Promise<ExtractionJSON> {
-  // ── MOCK (placeholder) ───────────────────────────────────
-  const stages = ['Detecting document type…', 'Extracting text (OCR / Docling)…', 'Running local LLM…', 'Structuring JSON…']
-  for (let i = 0; i < stages.length; i++) {
-    f.stage = stages[i]
-    await tick(500)
-    f.progress = Math.round(((i + 1) / stages.length) * 100)
-  }
-  return structuredClone(MOCK_RESULT)
-  // ── END MOCK ─────────────────────────────────────────────
-}
-
 async function runOne(f: QueuedFile) {
-  f.status = 'processing'; f.progress = 0; f.error = ''
+  if (!f.file) {
+    f.status = 'error'
+    f.error = 'File source missing. Please re-upload.'
+    return
+  }
+
+  f.status = 'processing'
+  f.progress = 5
+  f.stage = 'Connecting to server...'
+  f.error = ''
+
   try {
-    f.result = await runExtraction(f)
-    f.status = 'done'
+    const formData = new FormData()
+    formData.append('file', f.file)
+
+    const startResponse = await $fetch<{ jobId: string }>(`${API_BASE_URL}/api/extract/start`, {
+      method: 'POST',
+      body: formData
+    })
+
+    f.jobId = startResponse.jobId
+    pollStatus(f)
   } catch (e: any) {
     f.status = 'error'
-    f.error = e?.message || 'Extraction failed.'
-  }
-}
-async function runAll() {
-  for (const f of files.value) {
-    if (f.status === 'queued' || f.status === 'error') await runOne(f)
+    f.error = e?.data?.detail || e?.message || 'Server connection failed.'
   }
 }
 
+function waitUntilDone(f: QueuedFile) {
+  return new Promise<void>((resolve) => {
+    const checkInterval = setInterval(() => {
+      // If the API finishes, OR if you hit the Force Cancel button
+      if (f.status === 'done' || f.status === 'error') {
+        clearInterval(checkInterval)
+        resolve()
+      }
+    }, 1000) // Check every 1 second
+  })
+}
+
+async function runAll() {
+  for (const f of files.value) {
+    if (f.status === 'queued' || f.status === 'error') {
+      await runOne(f) // Step 1: Upload the file and start the API polling
+      await waitUntilDone(f) // Step 2: Halt the loop completely until this file finishes
+    }
+  }
+}
+
+function pollStatus(f: QueuedFile) {
+  // Clear any existing polling timer for this file just in case
+  if (f.pollIntervalId) clearInterval(f.pollIntervalId)
+
+  f.pollIntervalId = setInterval(async () => {
+    try {
+      const response = await $fetch<StatusResponse>(`${API_BASE_URL}/api/extract/status?jobId=${f.jobId}`)
+
+      // Apply the exact API state directly to the Vue component
+      f.status = response.status as Status
+      f.stage = response.stage
+      f.progress = response.progress
+
+      if (response.status === 'done') {
+        if (f.pollIntervalId) clearInterval(f.pollIntervalId)
+        f.result = response.result || null
+      } else if (response.status === 'error') {
+        if (f.pollIntervalId) clearInterval(f.pollIntervalId)
+        f.error = response.error || 'Server error encountered.'
+      }
+
+    } catch (e: any) {
+      console.warn('Polling error:', e)
+    }
+  }, 3000)
+}
+
+function cancelExtraction(f: QueuedFile) {
+  if (f.pollIntervalId) {
+    clearInterval(f.pollIntervalId)
+  }
+  f.status = 'error'
+  f.error = 'Process forcefully cancelled by user.'
+  f.stage = 'Cancelled'
+}
+
 /* ───────────────────────────────────────────────────────────
-   DOWNLOAD
+   DOWNLOAD & UI HELPERS
    ─────────────────────────────────────────────────────────── */
 function downloadOne(f: QueuedFile) {
   const blob = new Blob([pretty(f.result)], { type: 'application/json' })
@@ -283,14 +365,7 @@ function downloadOne(f: QueuedFile) {
   a.click()
   URL.revokeObjectURL(url)
 }
-function downloadAll() {
-  files.value.filter(f => f.status === 'done').forEach(downloadOne)
-}
-
-/* ───────────────────────────────────────────────────────────
-   HELPERS
-   ─────────────────────────────────────────────────────────── */
-const tick = (ms: number) => new Promise(r => setTimeout(r, ms))
+function downloadAll() { files.value.filter(f => f.status === 'done').forEach(downloadOne) }
 const pretty = (o: unknown) => JSON.stringify(o, null, 2)
 function formatBytes(b: number) {
   if (b < 1024) return b + ' B'
@@ -302,8 +377,7 @@ function statusLabel(s: Status) {
 }
 
 /* ───────────────────────────────────────────────────────────
-   RESULT TABLE (inline component) — value + pages, grouped.
-   Full reference_context stays in the raw JSON only.
+   RESULT TABLE COMPONENT
    ─────────────────────────────────────────────────────────── */
 const ExtractionResult = defineComponent({
   props: { data: { type: Object, required: true } },
@@ -327,6 +401,8 @@ const ExtractionResult = defineComponent({
       ])
     return () => {
       const x = d()
+      if (!x) return h('div', { class: 'err-msg' }, 'Malformed JSON returned from server.')
+      
       return h('div', { class: 'result-grid' }, [
         section('Identifiers', [row('AFE Number', x.AFE_Number), row('Project Type', x.Project_Type)]),
         section('Structural parameters', [
@@ -338,46 +414,19 @@ const ExtractionResult = defineComponent({
           row('Number of Slots', x.Number_of_Slots),
         ]),
         section('Topside Equipment', [
-          row('Wellhead', x.Topside_Equipment.Wellhead),
-          row('Processing', x.Topside_Equipment.Processing),
-          row('Utilities', x.Topside_Equipment.Utilities),
+          row('Wellhead', x.Topside_Equipment?.Wellhead || {} as Field),
+          row('Processing', x.Topside_Equipment?.Processing || {} as Field),
+          row('Utilities', x.Topside_Equipment?.Utilities || {} as Field),
         ]),
         section('Impurities', [
-          row('H₂S', x.Impurities.H2S),
-          row('CO₂', x.Impurities.CO2),
-          row('Hg', x.Impurities.Hg),
+          row('H₂S', x.Impurities?.H2S || {} as Field),
+          row('CO₂', x.Impurities?.CO2 || {} as Field),
+          row('Hg', x.Impurities?.Hg || {} as Field),
         ]),
       ])
     }
   },
 })
-
-/* ───────────────────────────────────────────────────────────
-   MOCK RESULT — replace-free once the real endpoint returns
-   this same shape.
-   ─────────────────────────────────────────────────────────── */
-const MOCK_RESULT: ExtractionJSON = {
-  AFE_Extraction: {
-    AFE_Number: { value: 'AFE-2023-014', reference_context: 'Authorization for Expenditure No. AFE-2023-014.', pages: '1' },
-    Project_Type: { value: 'Platform', reference_context: 'This Platform Project covers engineering, procurement and installation.', pages: '1' },
-    Water_Depth: { value: '60 meters', reference_context: 'The platform is designed for a water depth of 60 meters.', pages: '3' },
-    Weight_Topside: { value: '1,200 MT', reference_context: 'Topside weight is estimated at 1,200 MT.', pages: '5' },
-    Weight_Jacket: { value: '2,500 MT', reference_context: 'Jacket weight is approximately 2,500 MT.', pages: '5' },
-    Piling_Weight: { value: null, reference_context: 'Not Found', pages: 'Not Found' },
-    Number_of_Legs: { value: 4, reference_context: 'A 4-leg jacket structure is proposed.', pages: '4' },
-    Number_of_Slots: { value: 16, reference_context: 'Allowance for 16 well slots per platform.', pages: '4' },
-    Topside_Equipment: {
-      Wellhead: { value: 'Wellhead & X-mas tree', reference_context: 'Topside includes wellhead and X-mas tree.', pages: '6' },
-      Processing: { value: 'Test separator', reference_context: 'A test separator is provided for processing.', pages: '6' },
-      Utilities: { value: null, reference_context: 'Not Found', pages: 'Not Found' },
-    },
-    Impurities: {
-      H2S: { value: '5 ppm', reference_context: 'H2S content measured at 5 ppm.', pages: '7' },
-      CO2: { value: '1.5 %mol', reference_context: 'CO2 content is 1.5 %mol.', pages: '7' },
-      Hg: { value: null, reference_context: 'Not Found', pages: 'Not Found' },
-    },
-  },
-}
 </script>
 
 <style scoped>
