@@ -10,15 +10,30 @@
       <!-- ── YEAR SELECTS (Cost Basis Year & Forecast Year) ── -->
       <div class="nav-group">
         <div class="year-select-wrap year-basis">
-          <select class="year-select" disabled>
+          <select
+            class="year-select"
+            :value="store.navParams.costBaseYear"
+            @change="e => store.setNavParams({ costBaseYear: (e.target as HTMLSelectElement).value })"
+          >
+            <option>2018–2022</option>
+            <option>2019–2023</option>
             <option>2020–2024</option>
+            <option>2021–2025</option>
           </select>
           <span class="year-label">Cost Base</span>
         </div>
 
         <div class="year-select-wrap year-forecast">
-          <select class="year-select" disabled>
+          <select
+            class="year-select"
+            :value="store.navParams.forecastYear"
+            @change="e => store.setNavParams({ forecastYear: (e.target as HTMLSelectElement).value })"
+          >
+            <option>2026</option>
+            <option>2027</option>
             <option>2028</option>
+            <option>2029</option>
+            <option>2030</option>
           </select>
           <span class="year-label">Forecast</span>
         </div>
@@ -26,64 +41,77 @@
 
       <div class="nav-divider"></div>
 
-      <!-- ── NUMERICAL INPUTS ── -->
-      <div class="nav-group">
-        <div class="num-input-wrap">
-          <input type="number" class="num-input" placeholder="Depth" disabled />
-        </div>
-        <div class="num-input-wrap">
-          <input type="number" class="num-input" placeholder="Length" disabled />
-        </div>
+      <!-- ── COMPACT SLASH GROUP: Depth / P.Length / Topside / Jacket ── -->
+      <div class="nav-group slash-group">
+        <input
+          id="nav-depth"
+          type="number"
+          class="slash-input"
+          placeholder="Depth"
+          min="0"
+          :value="store.navParams.waterDepth ?? ''"
+          @input="onNumInput('waterDepth', $event)"
+        />
+        <span class="slash-sep">/</span>
+        <input
+          id="nav-length"
+          type="number"
+          class="slash-input"
+          placeholder="P.Length"
+          min="0"
+          :value="store.navParams.pipeLength ?? ''"
+          @input="onNumInput('pipeLength', $event)"
+        />
+        <span class="slash-sep">/</span>
+        <input
+          id="nav-topside"
+          type="number"
+          class="slash-input"
+          placeholder="Topside"
+          min="0"
+          :value="store.navParams.topside ?? ''"
+          @input="onNumInput('topside', $event)"
+        />
+        <span class="slash-sep">/</span>
+        <input
+          id="nav-jacket"
+          type="number"
+          class="slash-input"
+          placeholder="Jacket"
+          min="0"
+          :value="store.navParams.jacket ?? ''"
+          @input="onNumInput('jacket', $event)"
+        />
       </div>
 
       <div class="nav-divider"></div>
 
       <!-- ── DROPDOWN SELECTS ── -->
       <div class="nav-group">
-        <!-- Legs -->
+        <!-- Legs Configuration -->
         <div class="dropdown-wrap">
-          <select class="nav-dropdown" disabled>
+          <select
+            id="nav-legs"
+            class="nav-dropdown"
+            :value="store.navParams.legs"
+            @change="onLegsChange"
+          >
             <option value="">Legs</option>
-            <option>[Choice 1]</option>
-            <option>[Choice 2]</option>
-            <option>[Choice 3]</option>
-            <option>[Choice 4]</option>
-            <option>[Choice 5]</option>
-          </select>
-          <Icon name="heroicons:chevron-down-20-solid" class="dropdown-chevron" />
-        </div>
-
-        <!-- Umbilical 
-        <div class="dropdown-wrap">
-          <select class="nav-dropdown" disabled>
-            <option value="">Umbilical Slot</option>
-            <option>[Choice 1]</option>
-            <option>[Choice 2]</option>
-            <option>[Choice 3]</option>
-            <option>[Choice 4]</option>
-            <option>[Choice 5]</option>
-          </select>
-          <Icon name="heroicons:chevron-down-20-solid" class="dropdown-chevron" />
-        </div> -->
-
-        <!-- Installation Method -->
-        <div class="dropdown-wrap">
-          <select class="nav-dropdown" disabled>
-            <option value="">Installation Method</option>
-            <option>[Choice 1]</option>
-            <option>[Choice 2]</option>
-            <option>[Choice 3]</option>
-            <option>[Choice 4]</option>
-            <option>[Choice 5]</option>
+            <option value="2">2 Legs</option>
+            <option value="3">3 Legs</option>
+            <option value="4">4 Legs</option>
+            <option value="6">6 Legs</option>
           </select>
           <Icon name="heroicons:chevron-down-20-solid" class="dropdown-chevron" />
         </div>
 
         <!-- Proj. Location -->
         <div class="dropdown-wrap location-dropdown-wrap">
-          <select 
+          <select
+            id="nav-location"
             class="nav-dropdown location-nav-select"
-            v-model="store.selectedLocation"
+            :value="store.navParams.projectLocation"
+            @change="onLocationChange"
           >
             <option v-for="loc in store.locations" :key="loc" :value="loc">
               {{ loc }}
@@ -99,6 +127,7 @@
       <div class="nav-group">
         <div class="dropdown-wrap scenario-dropdown-wrap">
           <select
+            id="nav-scenario"
             class="nav-dropdown scenario-nav-select"
             v-model="scenarioId"
             @change="onScenarioChange"
@@ -124,11 +153,24 @@
 
       <!-- ── ACTION BUTTONS ── -->
       <div class="nav-group nav-actions">
-        <button class="calc-btn" disabled>
+        <button
+          id="nav-calc-btn"
+          class="calc-btn"
+          :class="{ 'calc-btn--ready': canCalc }"
+          :disabled="!canCalc"
+          @click="runCalc"
+        >
           <Icon name="heroicons:calculator-20-solid" class="calc-icon" />
           <span>Calc.</span>
         </button>
-        <button class="pdf-btn" disabled>
+        <button
+          id="nav-pdf-btn"
+          class="pdf-btn"
+          :class="{ 'pdf-btn--active': store.calcDone }"
+          :disabled="!store.calcDone"
+          @click="showPdfModal = true"
+          :title="store.calcDone ? 'Generate PDF Report' : 'Run Calc. first to unlock PDF'"
+        >
           <Icon name="heroicons:document-arrow-down-20-solid" class="pdf-icon" />
           <span class="pdf-label">PDF</span>
         </button>
@@ -136,11 +178,17 @@
 
     </div>
   </div>
+
+  <!-- PDF Export Modal -->
+  <PdfModal v-model="showPdfModal" />
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useVedaStore } from '~/stores/vedaStore'
+import PdfModal from '~/components/Forecast/PdfModal.vue'
+
+const showPdfModal = ref(false)
 
 const store = useVedaStore()
 const scenarioId = ref<number | null>(null)
@@ -156,6 +204,42 @@ const onScenarioChange = () => {
   }
 }
 
+// ── INPUT HANDLERS ──────────────────────────────────────────────────────────
+const onNumInput = (field: 'waterDepth' | 'pipeLength' | 'topside' | 'jacket', e: Event) => {
+  const raw = (e.target as HTMLInputElement).value
+  const val = raw === '' ? null : Number(raw)
+  store.setNavParams({ [field]: val })
+}
+
+const onLegsChange = (e: Event) => {
+  const val = (e.target as HTMLSelectElement).value as '2' | '3' | '4' | '6' | ''
+  store.setNavParams({ legs: val })
+}
+
+const onLocationChange = (e: Event) => {
+  const val = (e.target as HTMLSelectElement).value
+  // Keep both navParams.projectLocation and selectedLocation in sync
+  store.setNavParams({ projectLocation: val })
+  store.selectedLocation = val
+}
+
+// ── CALC GATE ───────────────────────────────────────────────────────────────
+// Calc is enabled when at least the key numeric fields have been filled
+const canCalc = computed(() => {
+  const p = store.navParams
+  return (
+    p.waterDepth !== null && p.waterDepth > 0 &&
+    p.pipeLength !== null && p.pipeLength > 0 &&
+    p.legs !== '' &&
+    p.projectLocation !== ''
+  )
+})
+
+const runCalc = () => {
+  if (!canCalc.value) return
+  store.runCalc()
+}
+
 // ── SCROLL HIDE / SHOW LOGIC ──
 const isHidden = ref(false)
 let lastScrollY = 0
@@ -167,12 +251,10 @@ const handleScroll = () => {
   const delta = currentY - lastScrollY
 
   if (delta > 6 && currentY > 80) {
-    // Scrolling down → schedule hide (slight delay so fast flicks don't flash)
     if (!isMouseOver) {
       isHidden.value = true
     }
   } else if (delta < -4) {
-    // Scrolling up → reveal immediately
     isHidden.value = false
   }
 
@@ -216,13 +298,11 @@ onBeforeUnmount(() => {
   top: 0;
   justify-self:center;
   z-index: 1000;
-  /* Frosted glass background */
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(16px) saturate(1.6);
   -webkit-backdrop-filter: blur(16px) saturate(1.6);
   border: 2px solid rgba(255, 153, 153, 0.397);
   box-shadow: 0 2px 24px rgba(0, 0, 0, 0.06);
-  /* Smooth slide transition */
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
               opacity 0.3s ease;
   will-change: transform;
@@ -310,7 +390,7 @@ onBeforeUnmount(() => {
 
 .year-select {
   appearance: none;
-  cursor: not-allowed;
+  cursor: pointer;
   padding: 5px 14px;
   border-radius: 99px;
   font-size: 13px;
@@ -318,34 +398,55 @@ onBeforeUnmount(() => {
   outline: none;
   text-align: center;
   min-width: 80px;
+  transition: opacity 0.15s;
 }
+.year-select:hover { opacity: 0.85; }
 
-/* ─── NUMERICAL INPUTS ────────────────────────────────── */
-.num-input-wrap {
-  display: flex;
-  align-items: center;
-}
-
-.num-input {
-  width: 76px;
-  padding: 7px 12px;
+/* ─── SLASH GROUP ─────────────────────────────────────────── */
+.slash-group {
+  gap: 0;
+  background: #f8fafc;
   border: 1.5px solid #e2e8f0;
   border-radius: 99px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: #334155;
-  background: #f8fafc;
-  outline: none;
-  text-align: center;
-  cursor: not-allowed;
-  transition: border-color 0.2s;
+  padding: 0 10px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.num-input::placeholder {
+.slash-group:focus-within {
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.12);
+  background: #fff;
+}
+
+.slash-input {
+  width: 58px;
+  padding: 7px 4px;
+  border: none;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  outline: none;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.slash-input::-webkit-outer-spin-button,
+.slash-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.slash-input::placeholder {
   color: #94a3b8;
   font-family: 'Poppins', sans-serif;
   font-weight: 500;
+  font-size: 11.5px;
+}
+
+.slash-sep {
+  font-size: 13px;
+  font-weight: 300;
+  color: #cbd5e1;
+  user-select: none;
+  padding: 0 1px;
 }
 
 /* ─── DROPDOWN SELECTS ────────────────────────────────── */
@@ -360,19 +461,25 @@ onBeforeUnmount(() => {
   padding: 7px 32px 7px 14px;
   border: 1.5px solid #e2e8f0;
   border-radius: 99px;
-  background-color: #ffffff;
+  background-color: #f8fafc;
   font-family: 'Poppins', sans-serif;
   font-size: 13px;
   font-weight: 500;
   color: #334155;
-  cursor: not-allowed;
+  cursor: pointer;
   outline: none;
   white-space: nowrap;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.nav-dropdown:not(:disabled):hover {
+.nav-dropdown:hover {
   border-color: #94a3b8;
+}
+
+.nav-dropdown:focus {
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.12);
+  background: #fff;
 }
 
 .dropdown-chevron {
@@ -387,7 +494,6 @@ onBeforeUnmount(() => {
 
 /* Location dropdown styling */
 .location-dropdown-wrap .nav-dropdown {
-  cursor: pointer;
   border-color: #cbd5e1;
   font-weight: 600;
   font-family: 'Poppins', sans-serif;
@@ -403,9 +509,8 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
 }
 
-/* Scenario dropdown — slightly wider, active style */
+/* Scenario dropdown */
 .scenario-dropdown-wrap .nav-dropdown {
-  cursor: pointer;
   border-color: #cbd5e1;
   font-weight: 600;
   font-family: 'Poppins', sans-serif;
@@ -445,6 +550,7 @@ onBeforeUnmount(() => {
   gap: 6px;
 }
 
+/* ── Calc button ── */
 .calc-btn {
   display: inline-flex;
   align-items: center;
@@ -452,17 +558,29 @@ onBeforeUnmount(() => {
   padding: 8px 18px;
   border: none;
   border-radius: 99px;
-  background: linear-gradient(135deg, #fb923c, #ef4444);
-  color: #ffffff;
+  background: #e2e8f0;
+  color: #94a3b8;
   font-family: 'Poppins', sans-serif;
   font-size: 13px;
   font-weight: 700;
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.7;
   outline: none;
-  transition: none;
+  transition: background 0.2s, color 0.2s, opacity 0.2s, box-shadow 0.2s;
   letter-spacing: 0.2px;
   white-space: nowrap;
+}
+
+.calc-btn--ready {
+  background: linear-gradient(135deg, #fb923c, #ef4444);
+  color: #ffffff;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.calc-btn--ready:hover {
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.28);
+  transform: translateY(-1px);
 }
 
 .calc-icon {
@@ -470,15 +588,16 @@ onBeforeUnmount(() => {
   height: 15px;
 }
 
+/* ── PDF button ── */
 .pdf-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 7px 14px;
-  border: 2px solid #ef4444;
+  border: 2px solid #e2e8f0;
   border-radius: 99px;
-  background: #fff;
-  color: #ef4444;
+  background: #f8fafc;
+  color: #b0bec5;
   font-family: 'Poppins', sans-serif;
   font-size: 12px;
   font-weight: 700;
@@ -486,6 +605,21 @@ onBeforeUnmount(() => {
   opacity: 0.55;
   outline: none;
   white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.pdf-btn--active {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: #fff;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.pdf-btn--active:hover {
+  background: #fff5f5;
+  box-shadow: 0 3px 12px rgba(239, 68, 68, 0.18);
+  transform: translateY(-1px);
 }
 
 .pdf-icon {

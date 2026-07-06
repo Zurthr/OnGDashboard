@@ -22,6 +22,17 @@ interface SummaryFindings {
   percentageDeviationTotal: number
 }
 
+interface NavParams {
+  waterDepth:      number | null
+  pipeLength:      number | null
+  legs:            '2' | '3' | '4' | '6' | ''
+  topside:         number | null
+  jacket:          number | null
+  projectLocation: string
+  forecastYear:    string
+  costBaseYear:    string
+}
+
 interface VedaState {
   summaryFindings: SummaryFindings
   componentFindings: ComponentFinding[]
@@ -42,6 +53,9 @@ interface VedaState {
   // Geographic states
   selectedLocation: string
   locations: string[]
+  // Nav parameter inputs
+  navParams: NavParams
+  calcDone: boolean
 }
 
 export const useVedaStore = defineStore('vedaStore', {
@@ -137,7 +151,19 @@ export const useVedaStore = defineStore('vedaStore', {
       'Malacca Strait',
       'Sunda Asri',
       'Makassar Strait'
-    ]
+    ],
+    // Nav parameter inputs
+    navParams: {
+      waterDepth:      null,
+      pipeLength:      null,
+      legs:            '',
+      topside:         null,
+      jacket:          null,
+      projectLocation: 'Natuna Sea',
+      forecastYear:    '2028',
+      costBaseYear:    '2020–2024',
+    },
+    calcDone: false,
   }),
 
   getters: {
@@ -264,6 +290,16 @@ export const useVedaStore = defineStore('vedaStore', {
       } finally {
         this.loadingNarrative = false
       }
+    },
+    // Update nav parameter inputs and reset calcDone
+    setNavParams(params: Partial<NavParams>) {
+      this.navParams = { ...this.navParams, ...params }
+      this.calcDone = false
+    },
+
+    // Confirm calculation was run — unlocks PDF button
+    runCalc() {
+      this.calcDone = true
     }
   }
 })
