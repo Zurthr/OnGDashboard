@@ -727,8 +727,8 @@ onBeforeUnmount(() => {
 }
 
 .calc-btn--ready {
-  background: linear-gradient(135deg, #fb923c, #ef4444);
-  color: #ffffff;
+  background: var(--platform2);
+  color: #040101;
   cursor: pointer;
   opacity: 1;
 }
@@ -764,8 +764,8 @@ onBeforeUnmount(() => {
 }
 
 .pdf-btn--active {
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: #f28080;
+  color: #ee6b6b;
   background: #fff;
   cursor: pointer;
   opacity: 1;

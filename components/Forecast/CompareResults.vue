@@ -1,18 +1,18 @@
 <template>
   <div class="compare-results-section">
     <!-- Row 0: Section Label -->
-    <div class="section-label-row">
-      <div class="section-label-block">
-        <span class="compare-label">Compare</span>
-        <h1 class="results-label">Results</h1>
-      </div>
-    </div>
+
 
     <!-- 3-column grid: Cost Basis | Forecasted | Variance -->
     <div class="results-grid">
 
       <!-- COL 1: Cost Basis -->
       <div class="col-basis">
+        <div style="display: flex; flex-direction: row; gap: 52px;">
+        <div class="section-label-block">
+          <span class="compare-label">Compare</span>
+          <h1 class="results-label">Results</h1>
+        </div>
         <div class="col-header-block">
           <span class="col-header-label">Cost Basis</span>
           <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse header-skeleton"></div>
@@ -21,6 +21,7 @@
             <span class="subtext-bold num-font">{{ baselineCostPerFoot }}</span> <span class="subtext-unit">US$/ft</span>
           </span>
         </div>
+      </div>
 
         <!-- Basis Cards -->
         <div class="cards-list">
@@ -410,7 +411,7 @@ const varianceCostPerFoot = computed(() =>
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  min-width: 100px;
+  min-width: 180px;
 }
 
 .card-currency {
