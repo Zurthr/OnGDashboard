@@ -7,8 +7,8 @@
         <span class="card-label">Cost Basis (USD)</span>
         <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
         <span v-else class="card-val num-font">{{ formatCurrency(store.summaryFindings.baselineTotal) }}</span>
-        <span class="card-subtitle">
-          <span class="subtext-bold">1,097</span> <span class="subtext-unit">US$/ft</span>
+        <span v-if="!store.loadingDetails" class="card-subtitle">
+          <span class="subtext-bold num-font">{{ baselineCostPerFoot }}</span> <span class="subtext-unit">US$/ft</span>
         </span>
       </div>
 
@@ -17,8 +17,8 @@
         <span class="card-label">Forecasted (USD)</span>
         <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
         <span v-else class="card-val num-font">{{ formatCurrency(store.summaryFindings.forecastTotal) }}</span>
-        <span class="card-subtitle">
-          <span class="subtext-bold">1,097</span> <span class="subtext-unit">US$/ft</span>
+        <span v-if="!store.loadingDetails" class="card-subtitle">
+          <span class="subtext-bold num-font">{{ forecastCostPerFoot }}</span> <span class="subtext-unit">US$/ft</span>
         </span>
       </div>
 
@@ -27,8 +27,8 @@
         <span class="card-label">Variance</span>
         <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
         <span v-else class="card-val num-font">{{ formatCurrency(store.summaryFindings.absoluteVarianceTotal) }}</span>
-        <span class="card-subtitle">
-          <span class="subtext-bold">1,097</span> <span class="subtext-unit">US$/ft</span>
+        <span v-if="!store.loadingDetails" class="card-subtitle">
+          <span class="subtext-bold num-font">{{ varianceCostPerFoot }}</span> <span class="subtext-unit">US$/ft</span>
         </span>
       </div>
 
@@ -50,7 +50,10 @@
         <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
         <template v-else>
           <span class="card-val num-font">{{ dominantDriverRatio }}%</span>
-          <span class="card-subtitle">{{ dominantDriverName }}</span>
+          <span class="card-subtitle dominant-driver-names">
+            <template v-if="dominantDriverPrimary">{{ dominantDriverPrimary }}<span v-if="dominantDriverMoreCount > 0" class="driver-more"> + {{ dominantDriverMoreCount }} more</span></template>
+            <template v-else>None</template>
+          </span>
         </template>
       </div>
 
@@ -73,23 +76,73 @@ import { useVedaStore } from '~/stores/vedaStore'
 import { useFormatters } from '~/composables/useFormatters'
 
 const store = useVedaStore()
-const { formatCurrency, getSeverityLabel, getSeverityBadgeClass } = useFormatters()
+const { formatCurrency, formatCostPerFoot, getSeverityLabel, getSeverityBadgeClass } = useFormatters()
 
-const dominantDriver = computed(() => {
-  return store.componentFindings.find(c => c.isDominantDriver)
-})
+const pipeLength = computed(() => store.navParams.pipeLength)
+
+const baselineCostPerFoot = computed(() =>
+  formatCostPerFoot(store.summaryFindings.baselineTotal, pipeLength.value)
+)
+
+const forecastCostPerFoot = computed(() =>
+  formatCostPerFoot(store.summaryFindings.forecastTotal, pipeLength.value)
+)
+
+const varianceCostPerFoot = computed(() =>
+  formatCostPerFoot(store.summaryFindings.absoluteVarianceTotal, pipeLength.value)
+)
+
+const formatCostTypeLabel = (costType: string) =>
+  costType.replace(/ (Costs|Cost)/g, '')
+
+const dominantDriverComponents = computed(() =>
+  store.componentFindings
+    .filter(c => c.isDominantDriver)
+    .sort((a, b) => Math.abs(b.absoluteVariance) - Math.abs(a.absoluteVariance))
+)
 
 const dominantDriverRatio = computed(() => {
-  return dominantDriver.value ? dominantDriver.value.contributionRatio : 0
+  const drivers = dominantDriverComponents.value
+  if (drivers.length === 0) return 0
+
+  const totalAbsVariance = store.componentFindings.reduce(
+    (sum, c) => sum + Math.abs(c.absoluteVariance),
+    0,
+  )
+  if (totalAbsVariance === 0) return 0
+
+  const driverAbsVariance = drivers.reduce(
+    (sum, c) => sum + Math.abs(c.absoluteVariance),
+    0,
+  )
+
+  return Number(((driverAbsVariance / totalAbsVariance) * 100).toFixed(2))
 })
 
-const dominantDriverName = computed(() => {
-  if (!dominantDriver.value) return 'None'
-  return dominantDriver.value.costType.replace(/ (Costs|Cost)/g, '')
+const dominantDriverPrimary = computed(() => {
+  if (dominantDriverComponents.value.length > 0) {
+    return formatCostTypeLabel(dominantDriverComponents.value[0].costType)
+  }
+
+  const fromApi = store.computedJson?.dominantDrivers as string | undefined
+  if (!fromApi || fromApi === 'None') return ''
+
+  return formatCostTypeLabel(fromApi.split(', ')[0])
+})
+
+const dominantDriverMoreCount = computed(() => {
+  if (dominantDriverComponents.value.length > 1) {
+    return dominantDriverComponents.value.length - 1
+  }
+
+  const fromApi = store.computedJson?.dominantDrivers as string | undefined
+  if (!fromApi || fromApi === 'None') return 0
+
+  return Math.max(0, fromApi.split(', ').length - 1)
 })
 
 const historicalStatusLabel = computed(() => {
-  if (store.computedJson?.overallSeverity === 'HIGH') return 'Unprecedented'
+  if (store.computedJson?.overallSeverity === 'HIGH') return 'Unpreced.'
   if (store.computedJson?.overallSeverity === 'MEDIUM') return 'Outlier'
   return 'Normal'
 })
@@ -172,6 +225,15 @@ const historicalStatusLabel = computed(() => {
   font-weight: 500;
   color: #64748b;
   margin-top: 4px;
+}
+
+.dominant-driver-names {
+  line-height: 1.35;
+}
+
+.driver-more {
+  color: #94a3b8;
+  font-weight: 400;
 }
 
 .subtext-bold {

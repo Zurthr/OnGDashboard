@@ -203,7 +203,7 @@ export const useVedaStore = defineStore('vedaStore', {
       this.selectedScenarioId = id
       this.loadingDetails = true
       this.error = null
-      // Clear narrative from previous scenario
+
       this.narrative = null
       this.narrativeError = null
       this.narrativeVerified = false
@@ -212,14 +212,11 @@ export const useVedaStore = defineStore('vedaStore', {
         const response = await $fetch<any>(`/api/scenarios/${id}`)
 
         if (response) {
-          // Store the raw computed VEDA JSON
           this.computedJson = response
 
-          // Populate existing reactive states
           this.summaryFindings = response.summaryFindings
           this.componentFindings = response.componentFindings
 
-          // Generate AI insights automatically
           await this.generateInsights()
         }
       } catch (err: any) {
