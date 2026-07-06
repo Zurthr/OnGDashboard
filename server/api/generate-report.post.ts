@@ -6,33 +6,31 @@ import path from 'path'
 //  Types
 // ─────────────────────────────────────────────────────────────────────────────
 interface ComponentFinding {
-  costType:          string
-  baseline:          number
-  forecast:          number
-  absoluteVariance:  number
+  costType: string
+  baseline: number
+  forecast: number
+  absoluteVariance: number
   percentageDeviation: number
   contributionRatio: number
-  isDominantDriver:  boolean
+  isDominantDriver: boolean
 }
 
 interface SummaryFindings {
-  baselineTotal:            number
-  forecastTotal:            number
-  absoluteVarianceTotal:    number
+  baselineTotal: number
+  forecastTotal: number
+  absoluteVarianceTotal: number
   percentageDeviationTotal: number
 }
 
 interface ScenarioParams {
-  forecastYear?:       string | number
-  historicalBasis?:    string
-  waterDepth?:         string | number
-  structureLength?:    string | number
-  legsConfiguration?:  string
-  umbilicalSlot?:      string
-  installationMethod?: string
-  projectLocation?:    string
-  topsideWeight?:      string | number
-  jacketWeight?:       string | number
+  forecastYear?: string | number
+  historicalBasis?: string
+  waterDepth?: string | number
+  structureLength?: string | number
+  legsConfiguration?: string
+  projectLocation?: string
+  topsideWeight?: string | number
+  jacketWeight?: string | number
 }
 
 
@@ -107,13 +105,13 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event)
 
   const {
-    scenarioId              = null,
+    scenarioId = null,
     summaryFindings,
-    componentFindings       = [],
-    insights                = null,
-    narrative               = null,
-    selectedVisualizations  = ['location', 'variance', 'treemap'],
-    scenarioParams          = {} as ScenarioParams,
+    componentFindings = [],
+    insights = null,
+    narrative = null,
+    selectedVisualizations = ['location', 'variance', 'treemap'],
+    scenarioParams = {} as ScenarioParams,
   } = body || {}
 
   if (!summaryFindings) {
@@ -151,8 +149,8 @@ export default defineEventHandler(async (event) => {
     await page.goto(targetUrl, { waitUntil: 'networkidle2' })
 
     // Wait for the Leaflet map viewport and custom marker to be rendered
-    await page.waitForSelector('.leaflet-map-viewport', { timeout: 15000 }).catch(() => {})
-    await page.waitForSelector('.custom-leaflet-marker', { timeout: 8000 }).catch(() => {})
+    await page.waitForSelector('.leaflet-map-viewport', { timeout: 15000 }).catch(() => { })
+    await page.waitForSelector('.custom-leaflet-marker', { timeout: 8000 }).catch(() => { })
     // Wait for Leaflet tiles to load fully and map center transition to finish
     await new Promise(resolve => setTimeout(resolve, 2000))
 
@@ -233,7 +231,7 @@ export default defineEventHandler(async (event) => {
 
   const increase = summaryFindings.percentageDeviationTotal >= 0
   const devColor = increase ? '#991b1b' : '#166534'
-  const devBg    = increase ? '#fee2e2' : '#dcfce7'
+  const devBg = increase ? '#fee2e2' : '#dcfce7'
 
   // Dominant driver name
   const dominant = componentFindings.find(c => c.isDominantDriver)
@@ -247,14 +245,14 @@ export default defineEventHandler(async (event) => {
 
   // ── Parameter rows ─────────────────────────────────────────────────────────
   const paramRowsHtml = [
-    ['Forecast Year',       scenarioParams.forecastYear      ?? '2028'],
-    ['Historical Basis',    scenarioParams.historicalBasis   ?? '2020–2024'],
-    ['Water Depth',         scenarioParams.waterDepth        ?? '—'],
-    ['Structure Length',    scenarioParams.structureLength   ?? '—'],
-    ['Legs Configuration',  scenarioParams.legsConfiguration ?? '—'],
-    ['Umbilical Slot',      scenarioParams.umbilicalSlot     ?? '—'],
-    ['Installation Method', scenarioParams.installationMethod ?? '—'],
-    ['Project Location',    scenarioParams.projectLocation   ?? '—'],
+    ['Forecast Year', scenarioParams.forecastYear ?? '—'],
+    ['Historical Basis', scenarioParams.historicalBasis ?? '—'],
+    ['Water Depth', scenarioParams.waterDepth ? `${scenarioParams.waterDepth} Meters` : '—'],
+    ['Structure Length', scenarioParams.structureLength ? `${scenarioParams.structureLength} Meters` : '—'],
+    ['Legs Configuration', scenarioParams.legsConfiguration ? `${scenarioParams.legsConfiguration} Legs` : '—'],
+    ['Topside Weight', scenarioParams.topsideWeight ? `${scenarioParams.topsideWeight} Metric Tons` : '—'],
+    ['Jacket Weight', scenarioParams.jacketWeight ? `${scenarioParams.jacketWeight} Metric Tons` : '—'],
+    ['Project Location', scenarioParams.projectLocation ?? '—'],
   ].map(([label, val], i) => `
     <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8f8f8'};">
       <td style="padding:6px 10px;color:#64748b;font-size:10pt;border-bottom:0.5pt solid #e2e8f0;width:42%;">${label}</td>
@@ -263,12 +261,12 @@ export default defineEventHandler(async (event) => {
 
   // ── KPI grid ───────────────────────────────────────────────────────────────
   const kpiData = [
-    { label: 'Cost Basis (USD)',       value: fmtUSD(summaryFindings.baselineTotal),        bg: '#f8fafc', vcolor: '#0f172a' },
-    { label: 'Forecasted (USD)',        value: fmtUSD(summaryFindings.forecastTotal),         bg: '#f8fafc', vcolor: '#0f172a' },
-    { label: 'Variance',               value: (increase ? '+' : '') + fmtUSD(summaryFindings.absoluteVarianceTotal), bg: devBg, vcolor: devColor },
-    { label: 'Deviation %',            value: fmtPct(summaryFindings.percentageDeviationTotal), bg: devBg, vcolor: devColor },
-    { label: 'Dominant Driver',        value: dominantName,          bg: '#fff5f5', vcolor: '#D85A30' },
-    { label: 'Historical Status',      value: histFlag,              bg: '#f0fdf4', vcolor: '#166534' },
+    { label: 'Cost Basis (USD)', value: fmtUSD(summaryFindings.baselineTotal), bg: '#f8fafc', vcolor: '#0f172a' },
+    { label: 'Forecasted (USD)', value: fmtUSD(summaryFindings.forecastTotal), bg: '#f8fafc', vcolor: '#0f172a' },
+    { label: 'Variance', value: (increase ? '+' : '') + fmtUSD(summaryFindings.absoluteVarianceTotal), bg: devBg, vcolor: devColor },
+    { label: 'Deviation %', value: fmtPct(summaryFindings.percentageDeviationTotal), bg: devBg, vcolor: devColor },
+    { label: 'Dominant Driver', value: dominantName, bg: '#fff5f5', vcolor: '#D85A30' },
+    { label: 'Historical Status', value: histFlag, bg: '#f0fdf4', vcolor: '#166534' },
   ]
   const kpiGridHtml = kpiData.map(k => `
     <div style="background:${k.bg};border:1px solid #e2e8f0;border-radius:4px;padding:12px 14px;flex:1 1 30%;">

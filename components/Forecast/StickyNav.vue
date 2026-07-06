@@ -7,35 +7,52 @@
   >
     <div class="sticky-nav-inner">
 
-      <!-- ── YEAR SELECTS (Cost Basis Year & Forecast Year) ── -->
-      <div class="nav-group">
-        <div class="year-select-wrap year-basis">
-          <select
-            class="year-select"
-            :value="store.navParams.costBaseYear"
-            @change="e => store.setNavParams({ costBaseYear: (e.target as HTMLSelectElement).value })"
-          >
-            <option>2018–2022</option>
-            <option>2019–2023</option>
-            <option>2020–2024</option>
-            <option>2021–2025</option>
-          </select>
-          <span class="year-label">Cost Base</span>
-        </div>
+      <!-- ── YEAR SELECTS (Cost Basis Year & Forecast Year - Custom Checkbox Dropdown) ── -->
+      <div class="nav-group year-dropdown-wrap" ref="dropdownRef">
+        <button
+          id="nav-years-btn"
+          type="button"
+          class="nav-dropdown year-nav-btn"
+          @click="toggleDropdown"
+        >
+          <span>{{ yearsBtnLabel }}</span>
+          <Icon name="heroicons:chevron-down-20-solid" class="dropdown-chevron" />
+        </button>
 
-        <div class="year-select-wrap year-forecast">
-          <select
-            class="year-select"
-            :value="store.navParams.forecastYear"
-            @change="e => store.setNavParams({ forecastYear: (e.target as HTMLSelectElement).value })"
-          >
-            <option>2026</option>
-            <option>2027</option>
-            <option>2028</option>
-            <option>2029</option>
-            <option>2030</option>
-          </select>
-          <span class="year-label">Forecast</span>
+        <div v-if="isOpen" class="years-dropdown-panel">
+          <!-- Cost Base Section -->
+          <div class="dropdown-section">
+            <span class="section-title">Cost Base</span>
+            <div class="options-list">
+              <label v-for="yr in costBasisOptions" :key="yr" class="option-label">
+                <input
+                  type="checkbox"
+                  :checked="isCostBaseSelected(yr)"
+                  @change="toggleCostBase(yr)"
+                  class="custom-cb"
+                />
+                <span class="option-text">{{ yr }}</span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="dropdown-divider"></div>
+          
+          <!-- Forecast Section -->
+          <div class="dropdown-section">
+            <span class="section-title">Forecast Year</span>
+            <div class="options-list">
+              <label v-for="yr in forecastYearOptions" :key="yr" class="option-label">
+                <input
+                  type="checkbox"
+                  :checked="isForecastSelected(yr)"
+                  @change="toggleForecast(yr)"
+                  class="custom-cb"
+                />
+                <span class="option-text">{{ yr }}</span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -189,9 +206,71 @@ import { useVedaStore } from '~/stores/vedaStore'
 import PdfModal from '~/components/Forecast/PdfModal.vue'
 
 const showPdfModal = ref(false)
-
 const store = useVedaStore()
 const scenarioId = ref<number | null>(null)
+
+// ── CUSTOM CHECKBOX DROPDOWN LOGIC ──
+const dropdownRef = ref<HTMLElement | null>(null)
+const isOpen = ref(false)
+
+const costBasisOptions = ['2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026']
+const forecastYearOptions = ['2026', '2027', '2028', '2029', '2030']
+
+const toggleDropdown = () => {
+  isOpen.value = !isOpen.value
+}
+
+const isCostBaseSelected = (yr: string) => {
+  const selected = store.navParams.costBaseYear ? store.navParams.costBaseYear.split(',').map(s => s.trim()) : []
+  return selected.includes(yr)
+}
+
+const toggleCostBase = (yr: string) => {
+  let selected = store.navParams.costBaseYear ? store.navParams.costBaseYear.split(',').map(s => s.trim()) : []
+  if (selected.includes(yr)) {
+    selected = selected.filter(s => s !== yr)
+  } else {
+    selected.push(yr)
+  }
+  store.setNavParams({ costBaseYear: selected.join(', ') })
+}
+
+const isForecastSelected = (yr: string) => {
+  const selected = store.navParams.forecastYear ? store.navParams.forecastYear.split(',').map(s => s.trim()) : []
+  return selected.includes(yr)
+}
+
+const toggleForecast = (yr: string) => {
+  let selected = store.navParams.forecastYear ? store.navParams.forecastYear.split(',').map(s => s.trim()) : []
+  if (selected.includes(yr)) {
+    selected = selected.filter(s => s !== yr)
+  } else {
+    selected.push(yr)
+  }
+  store.setNavParams({ forecastYear: selected.join(', ') })
+}
+
+const formatYearsLabel = (selectedStr: string) => {
+  if (!selectedStr) return '—'
+  const years = selectedStr.split(',').map(s => s.trim()).filter(Boolean)
+  if (years.length === 0) return '—'
+  if (years.length === 1) return years[0]
+  // Sort numerically to get the earliest year
+  const sorted = years.map(Number).sort((a, b) => a - b)
+  return `${sorted[0]} + ${sorted.length - 1}..`
+}
+
+const yearsBtnLabel = computed(() => {
+  const cb = formatYearsLabel(store.navParams.costBaseYear)
+  const fy = formatYearsLabel(store.navParams.forecastYear)
+  return `${cb} | ${fy}`
+})
+
+const handleClickOutside = (e: MouseEvent) => {
+  if (dropdownRef.value && !dropdownRef.value.contains(e.target as Node)) {
+    isOpen.value = false
+  }
+}
 
 // Keep local scenario in sync with store
 watch(() => store.selectedScenarioId, (val) => {
@@ -281,11 +360,13 @@ onMounted(() => {
   lastScrollY = window.scrollY
   window.addEventListener('scroll', handleScroll, { passive: true })
   window.addEventListener('mousemove', handleMouseMove, { passive: true })
+  document.addEventListener('click', handleClickOutside)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', handleScroll)
   window.removeEventListener('mousemove', handleMouseMove)
+  document.removeEventListener('click', handleClickOutside)
   if (hideTimer) clearTimeout(hideTimer)
 })
 </script>
@@ -329,13 +410,8 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   flex-wrap: nowrap;
-  overflow-x: auto;
   justify-content:center;
 }
-
-/* Hide scrollbar on the inner row */
-.sticky-nav-inner::-webkit-scrollbar { display: none; }
-.sticky-nav-inner { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* ─── GROUPS ──────────────────────────────────────────── */
 .nav-group {
@@ -447,6 +523,85 @@ onBeforeUnmount(() => {
   color: #cbd5e1;
   user-select: none;
   padding: 0 1px;
+}
+
+/* ─── CUSTOM YEARS DROPDOWN ───────────────────────────── */
+.year-dropdown-wrap {
+  position: relative;
+}
+
+.year-nav-btn {
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  min-width: 170px;
+  text-align: left;
+}
+
+.years-dropdown-panel {
+  position: absolute;
+  top: 115%;
+  left: 0;
+  min-width: 210px;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  z-index: 1010;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dropdown-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 2px;
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.option-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+.option-label:hover {
+  color: #fb923c;
+}
+
+.custom-cb {
+  width: 14px;
+  height: 14px;
+  accent-color: #fb923c;
+  cursor: pointer;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 4px 0;
 }
 
 /* ─── DROPDOWN SELECTS ────────────────────────────────── */

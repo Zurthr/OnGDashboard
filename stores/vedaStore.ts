@@ -23,14 +23,14 @@ interface SummaryFindings {
 }
 
 interface NavParams {
-  waterDepth:      number | null
-  pipeLength:      number | null
-  legs:            '2' | '3' | '4' | '6' | ''
-  topside:         number | null
-  jacket:          number | null
+  waterDepth: number | null
+  pipeLength: number | null
+  legs: '2' | '3' | '4' | '6' | ''
+  topside: number | null
+  jacket: number | null
   projectLocation: string
-  forecastYear:    string
-  costBaseYear:    string
+  forecastYear: string
+  costBaseYear: string
 }
 
 interface VedaState {
@@ -154,14 +154,14 @@ export const useVedaStore = defineStore('vedaStore', {
     ],
     // Nav parameter inputs
     navParams: {
-      waterDepth:      null,
-      pipeLength:      null,
-      legs:            '',
-      topside:         null,
-      jacket:          null,
+      waterDepth: null,
+      pipeLength: null,
+      legs: '',
+      topside: null,
+      jacket: null,
       projectLocation: 'Natuna Sea',
-      forecastYear:    '2028',
-      costBaseYear:    '2020–2024',
+      forecastYear: '',
+      costBaseYear: '',
     },
     calcDone: false,
   }),
@@ -207,7 +207,7 @@ export const useVedaStore = defineStore('vedaStore', {
       this.narrative = null
       this.narrativeError = null
       this.narrativeVerified = false
-      
+
       try {
         const response = await $fetch<any>(`/api/scenarios/${id}`)
 
@@ -234,7 +234,7 @@ export const useVedaStore = defineStore('vedaStore', {
     async generateInsights() {
       this.loadingInsights = true
       this.errorInsights = null
-      
+
       try {
         const response = await $fetch<{ insights: string }>('/api/generate-insights', {
           method: 'POST',
