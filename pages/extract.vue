@@ -109,17 +109,24 @@
             <Icon name="heroicons:exclamation-triangle" class="err-ic" /> {{ f.error }}
           </p>
 
-          <div v-if="f.status === 'done' && f.result" class="result">
-            <ExtractionResult :data="f.result" />
+          <div v-if="f.status === 'done' && (f.result || f.raw_text)" class="result">
+            
+            <ExtractionResult v-if="f.result" :data="f.result" />
+            
+            <div v-if="!f.result && f.raw_text" class="err-msg" style="margin-bottom: 12px;">
+              <Icon name="heroicons:exclamation-triangle" class="err-ic" /> 
+              The AI generated invalid data formatting. Showing raw text output below.
+            </div>
 
             <button class="raw-toggle" @click="f.showRaw = !f.showRaw">
               <Icon
                 :name="f.showRaw ? 'heroicons:chevron-down' : 'heroicons:chevron-right'"
                 class="raw-chev"
               />
-              {{ f.showRaw ? 'Hide' : 'Show' }} raw JSON
+              {{ f.showRaw ? 'Hide' : 'Show' }} raw output
             </button>
-            <pre v-if="f.showRaw" class="raw-json">{{ pretty(f.result) }}</pre>
+            
+            <pre v-if="f.showRaw" class="raw-json">{{ f.result ? pretty(f.result) : f.raw_text }}</pre>
           </div>
         </li>
       </ul>
@@ -175,6 +182,7 @@ interface QueuedFile {
   showRaw: boolean
   pollIntervalId?: any
   timestamp: number
+  raw_text?: string
 }
 
 // Expected response format from the new Python API
@@ -184,6 +192,7 @@ interface StatusResponse {
   progress: number
   result?: ExtractionJSON
   error?: string
+  raw_text?: string
 }
 
 /* ───────────────────────────────────────────────────────────
@@ -309,10 +318,13 @@ function waitUntilDone(f: QueuedFile) {
 }
 
 async function runAll() {
+  // NEW: Hard block to prevent double-clicks or phantom triggers
+  if (isBusy.value) return 
+
   for (const f of files.value) {
     if (f.status === 'queued' || f.status === 'error') {
-      await runOne(f) // Step 1: Upload the file and start the API polling
-      await waitUntilDone(f) // Step 2: Halt the loop completely until this file finishes
+      await runOne(f) // Step 1: Upload and start polling
+      await waitUntilDone(f) // Step 2: Halt the loop until finished
     }
   }
 }
@@ -333,6 +345,7 @@ function pollStatus(f: QueuedFile) {
       if (response.status === 'done') {
         if (f.pollIntervalId) clearInterval(f.pollIntervalId)
         f.result = response.result || null
+        f.raw_text = response.raw_text // <--- NEW: Save the raw string
       } else if (response.status === 'error') {
         if (f.pollIntervalId) clearInterval(f.pollIntervalId)
         f.error = response.error || 'Server error encountered.'
@@ -383,13 +396,13 @@ const ExtractionResult = defineComponent({
   props: { data: { type: Object, required: true } },
   setup(props) {
     const d = () => (props.data as ExtractionJSON).AFE_Extraction
-    const row = (label: string, field: Field) =>
+    const row = (label: string, field?: Field) =>
       h('tr', { class: 'r-row' }, [
         h('td', { class: 'r-label' }, label),
-        field.value === null || field.value === undefined
+        (!field || field.value === null || field.value === undefined)
           ? h('td', { class: 'r-val r-empty' }, 'Not Found')
           : h('td', { class: 'r-val' }, String(field.value)),
-        h('td', { class: 'r-pages' }, field.pages || '—'),
+        h('td', { class: 'r-pages' }, field?.pages || '—'),
       ])
     const section = (title: string, rows: any[]) =>
       h('div', { class: 'r-section' }, [

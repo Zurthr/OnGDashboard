@@ -28,6 +28,35 @@ auth_headers = {
 UPLOAD_DIR = os.path.join(os.getcwd(), "temp_workspace")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# Maximum markdown characters before we skip LLM and return empty JSON.
+# ~4 chars per token → 120,000 chars ≈ 30,000 tokens.
+MAX_MARKDOWN_CHARS = 120000
+
+# Empty JSON returned when the document exceeds context limits.
+# Matches the exact same shape as a normal extraction where every parameter is absent.
+EMPTY_EXTRACTION = {
+    "AFE_Extraction": {
+        "AFE_Number": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+        "Project_Type": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+        "Water_Depth": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+        "Weight_Topside": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+        "Weight_Jacket": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+        "Piling_Weight": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+        "Number_of_Legs": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+        "Number_of_Slots": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+        "Topside_Equipment": {
+            "Wellhead": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+            "Processing": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+            "Utilities": {"value": None, "reference_context": "Not Found", "pages": "Not Found"}
+        },
+        "Impurities": {
+            "H2S": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+            "CO2": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+            "Hg": {"value": None, "reference_context": "Not Found", "pages": "Not Found"}
+        }
+    }
+}
+
 # --- AUTOMATIC CLEANUP SYSTEM ---
 # Set the max age to 3 hours (in seconds)
 MAX_FILE_AGE_SECONDS = 3 * 60 * 60 
@@ -75,8 +104,9 @@ app.add_middleware(
 )
 
 # --- STATUS TRACKING HELPER ---
-def set_job_status(job_id: str, status: str, stage: str, progress: int, result: dict = None, error: str = None):
+def set_job_status(job_id: str, status: str, stage: str, progress: int, result: dict = None, error: str = None, raw_text: str = None):
     status_file = os.path.join(UPLOAD_DIR, f"{job_id}_status.json")
+    
     payload = {
         "status": status,
         "stage": stage,
@@ -84,6 +114,11 @@ def set_job_status(job_id: str, status: str, stage: str, progress: int, result: 
         "result": result,
         "error": error
     }
+    
+    # NEW: Only inject raw_text into the JSON if it was provided
+    if raw_text is not None:
+        payload["raw_text"] = raw_text
+        
     with open(status_file, "w", encoding="utf-8") as f:
         json.dump(payload, f)
 
@@ -141,26 +176,33 @@ def process_pdf_and_ask(pdf_path, question, job_id):
         doc = result.document
         parts = [f"--- Page {p} ---\n{doc.export_to_markdown(page_no=p)}" for p in range(1, len(doc.pages) + 1)]
         extracted_markdown = "\n\n".join(parts)
-        # --- NEW: CONTEXT SIZE CHECK ---
-        # Roughly 4 characters per token. 120,000 chars is ~30,000 tokens.
-        MAX_MARKDOWN_CHARS = 120000 
-        
-        if len(extracted_markdown) > MAX_MARKDOWN_CHARS:
-            # We raise a ValueError here. The try/except block in your worker 
-            # function will catch this instantly and update the Vue UI to "error".
-            estimated_tokens = len(extracted_markdown) // 4
-            raise ValueError(f"File is too large to be extracted! (Estimated {estimated_tokens} tokens exceeds the safety limit).")
+
+    # --- CONTEXT SIZE CHECK (covers BOTH scanned and digital paths) ---
+    if len(extracted_markdown) > MAX_MARKDOWN_CHARS:
+        estimated_tokens = len(extracted_markdown) // 4
+        print(f"  ⚠️ Document too large ({estimated_tokens} est. tokens). Returning empty extraction.")
+        set_job_status(job_id, "processing", "Document too large — returning empty result...", 60)
+        return json.dumps(EMPTY_EXTRACTION)
 
     # STAGE 2: LLM Extraction
     set_job_status(job_id, "processing", "Currently Extracting parameters (Gemma 4)...", 65)
-    gemma_prompt = f"{question}\n\n4. Expected Input:\n```markdown\n{extracted_markdown}\n```\n"
     
     final_response = client.chat(
         model='gemma4:e4b',
-        messages=[{'role': 'user', 'content': gemma_prompt}],
-        options={'num_ctx': 32768}
+        messages=[
+            # System: your extraction rules (the model treats this as its instructions)
+            {'role': 'system', 'content': question},
+            # User: ONLY the document text (sent once, not twice)
+            {'role': 'user', 'content': f"--- BEGIN AFE DOCUMENT ---\n{extracted_markdown}\n--- END AFE DOCUMENT ---"},
+            # Assistant prefill: force the model to start outputting JSON immediately
+            {'role': 'assistant', 'content': '```json\n{'}
+        ],
+        options={
+            'num_ctx': 32768,
+            'temperature': 0
+        }
     )
-    return final_response['message']['content']
+    return '{' + final_response['message']['content']
 
 # --- BACKGROUND TASK WORKER ---
 def run_extraction_job(job_id: str, pdf_path: str):
@@ -177,7 +219,7 @@ def run_extraction_job(job_id: str, pdf_path: str):
     * Scan the Text: Review the provided AFE document text for the document identifiers and the target parameters.
     * Keyword Association: Use industry-standard abbreviations and keywords to identify the data:
         * AFE Number: AFE No, AFE Number, AFE #, Authorization for Expenditure No
-        * Project Type: Platform, Subsea, project type, development type (e.g. "Platform Project")
+        * Project Type: Classify the project strictly as either "Platform" or "Subsea" based on the document content. Use keywords such as: platform, jacket, topside, wellhead platform (→ Platform); subsea, SURF, umbilical, flowline, PLET (→ Subsea). If unclear, default to "Platform". Do not use any other classification.
         * Water Depth: Water Depth, WD, depth, ft, meters
         * Weight Topside: Topside Weight, Deck Weight, Topsides, tons, MT
         * Weight Jacket: Jacket Weight, Substructure Weight, tons, MT
@@ -202,7 +244,7 @@ def run_extraction_job(job_id: str, pdf_path: str):
         "pages": "[Page number(s), or 'Not Found']"
         },
         "Project_Type": {
-        "value": "[Platform / Subsea / etc., or null]",
+        "value": "[Must be exactly 'Platform' or 'Subsea', or null if document is empty]",
         "reference_context": "[Exact sentence from text, or 'Not Found']",
         "pages": "[Page number(s), or 'Not Found']"
         },
@@ -283,15 +325,22 @@ def run_extraction_job(job_id: str, pdf_path: str):
         if clean_json_str.endswith("```"):
             clean_json_str = clean_json_str[:-3]
         
-        # Use repair_json with return_dicts=True to automatically fix LLM typos
         parsed_json = repair_json(clean_json_str.strip(), return_objects=True)
         
-        # Add a quick safeguard just in case the LLM outputs complete gibberish
         if not parsed_json:
-            raise ValueError("LLM output could not be parsed into valid JSON even after repair.")
-        
-        # STAGE 3: Done!
-        set_job_status(job_id, "done", "Extraction Complete", 100, result=parsed_json)
+            # 🛑 FALLBACK: The JSON is completely destroyed.
+            # Mark it as "done" so the UI stops loading, but pass the raw string back!
+            set_job_status(
+                job_id, 
+                "done", 
+                "Completed with severe formatting errors", 
+                100, 
+                result=None, 
+                raw_text=clean_json_str.strip() # Pass the raw string
+            )
+        else:
+            # ✅ SUCCESS: It parsed correctly.
+            set_job_status(job_id, "done", "Extraction Complete", 100, result=parsed_json)
             
     except Exception as e:
         set_job_status(job_id, "error", "Failed during processing", 0, error=str(e))
