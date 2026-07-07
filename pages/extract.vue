@@ -474,12 +474,8 @@ const ExtractionResult = defineComponent({
   border-radius: 24px;
   box-shadow: 0 8px 32px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.03);
   padding: 28px;
-  margin-bottom: 24px;
+  margin-bottom: 10px;
   overflow: hidden;
-}
-.card-bar {
-  position: absolute; top: 0; left: 0; right: 0; height: 4px;
-  background: var(--platform); opacity: .85;
 }
 
 /* ── Dropzone ───────────────────────────────────────────── */

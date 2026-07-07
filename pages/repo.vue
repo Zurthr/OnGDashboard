@@ -85,7 +85,7 @@
 
       <!-- Legend -->
       <div v-if="store.dlqCount > 0" class="legend">
-        <span class="flag-dot flag-dot--legend" /> <span class="legend-text">Cell flagged by DLQ — hover for details</span>
+        <span class="flag-dot flag-dot--legend" /> <span class="legend-text">Cell flagged by DLQ</span>
       </div>
 
       <!-- Pagination -->
@@ -228,18 +228,15 @@ function exportCsv() {
 .warn-ic { width: 20px; height: 20px; flex-shrink: 0; }
 
 /* Scorecard */
-.scorecard-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-.sc-card { background: #fff; border-radius: 20px; padding: 20px 22px; box-shadow: 0 4px 16px rgba(0,0,0,.04); position: relative; overflow: hidden; }
-.sc-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--platform); opacity: .7; }
+.scorecard-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+.sc-card { background: #fff; border-radius: 12px; padding: 12px 8px; box-shadow: 0 4px 16px rgba(0,0,0,.04); position: relative; overflow: hidden;  flex-direction: column; align-items: center; justify-content: center; text-align: center}
 .warn-card { background: #fffbeb; }
-.warn-card::before { background: #f59e0b; opacity: .9; }
-.sc-label { font-family: 'Inter'; font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: #94a3b8; display: block; }
-.sc-val { font-size: 28px; font-weight: 800; color: #0f172a; margin-top: 6px; display: block; letter-spacing: -0.5px; }
+.sc-label { font-family: 'Inter'; font-size: 10px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: #94a3b8; display: block; margin-bottom: 2px; }
+.sc-val { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 6px; display: block; letter-spacing: -0.5px;}
 .num-font { font-family: 'Inter', monospace; }
 
 /* Table card */
-.card { position: relative; background: #fff; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.03); padding: 28px; margin-bottom: 24px; overflow: hidden; }
-.card-bar { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--platform); opacity: .85; }
+.card { position: relative; background: #fff; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.03); padding: 28px; margin-bottom: 12px; overflow: hidden;}
 
 .table-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .search-wrap { position: relative; flex: 1; max-width: 400px; }
