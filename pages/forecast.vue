@@ -66,5 +66,6 @@ useHead({
   display: flex;
   flex-direction: column;
   padding: 80px 40px 80px;
+  background-color: #f4f4f0;
 }
 </style>
