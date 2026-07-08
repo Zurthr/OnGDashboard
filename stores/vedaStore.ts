@@ -217,7 +217,9 @@ export const useVedaStore = defineStore('vedaStore', {
           this.summaryFindings = response.summaryFindings
           this.componentFindings = response.componentFindings
 
-          await this.generateInsights()
+          // Trigger non-blocking insights and narrative generation
+          this.generateInsights()
+          this.generateNarrative()
         }
       } catch (err: any) {
         this.error = err?.statusMessage || err?.message || `Failed to fetch VEDA computation for scenario ${id}`
@@ -258,6 +260,8 @@ export const useVedaStore = defineStore('vedaStore', {
       this.narrativeVerified = false
       this.narrative = null
 
+      let narrativeSuccess = false
+
       try {
         const response = await $fetch<{
           success: boolean
@@ -266,6 +270,7 @@ export const useVedaStore = defineStore('vedaStore', {
           message?: string
         }>('/api/generate-narrative', {
           method: 'POST',
+          timeout: 15000,
           body: {
             vedaJson: this.computedJson
           }
@@ -274,19 +279,34 @@ export const useVedaStore = defineStore('vedaStore', {
         if (response.success && response.verified) {
           this.narrative = response.narrative || ''
           this.narrativeVerified = true
+          narrativeSuccess = true
         } else {
-          // Narrative failed BFF verification check
-          this.narrativeError = response.message || 'Narrative verification failed.'
-          this.narrativeVerified = false
-          // Store narrative text anyway if returned, for debugging or context
-          this.narrative = response.narrative || null
+          console.warn('Narrative generation returned unsuccessful or failed verification. Falling back to insights.')
         }
       } catch (err: any) {
-        this.narrativeError = err?.statusMessage || err?.message || 'Failed to generate regulatory narrative.'
-        console.error('Narrative Generation Error:', err)
-      } finally {
-        this.loadingNarrative = false
+        console.error('Error or timeout generating narrative:', err)
       }
+
+      // Fallback if narrative generation failed or timed out
+      if (!narrativeSuccess) {
+        try {
+          console.log('Using generate-insights fallback...')
+          const fallbackResponse = await $fetch<{ insights: string }>('/api/generate-insights', {
+            method: 'POST',
+            body: {
+              summaryFindings: this.summaryFindings,
+              componentFindings: this.componentFindings
+            }
+          })
+          this.narrative = fallbackResponse.insights || ''
+          this.narrativeVerified = false
+        } catch (fallbackErr: any) {
+          this.narrativeError = fallbackErr?.message || 'Failed to generate analysis'
+          console.error('Narrative fallback to insights failed:', fallbackErr)
+        }
+      }
+
+      this.loadingNarrative = false
     },
     // Update nav parameter inputs and reset calcDone
     setNavParams(params: Partial<NavParams>) {
@@ -295,8 +315,9 @@ export const useVedaStore = defineStore('vedaStore', {
     },
 
     // Confirm calculation was run — unlocks PDF button
-    runCalc() {
+    async runCalc() {
       this.calcDone = true
+      await this.generateNarrative()
     }
   }
 })

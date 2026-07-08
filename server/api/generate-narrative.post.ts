@@ -58,7 +58,7 @@ Do not summarize or approximate.\n\n${JSON.stringify(vedaJson, null, 2)}`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage }
         ],
-        max_tokens: 1000,
+        max_tokens: 4000,
         temperature: 0.1
       }
     });
