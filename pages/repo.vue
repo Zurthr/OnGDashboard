@@ -14,9 +14,6 @@
         <Icon name="heroicons:exclamation-triangle" class="btn-ic" /> Import DLQ
       </button>
       <input ref="dlqInput" type="file" accept=".csv" hidden @change="e => handleImport(e, 'dlq')" />
-      <button class="btn btn-ghost" :disabled="!store.totalRecords" @click="exportCsv">
-        <Icon name="heroicons:arrow-down-tray" class="btn-ic" /> Export
-      </button>
       <button class="btn btn-danger" :disabled="!store.totalRecords && !store.dlqCount" @click="confirmClear">
         <Icon name="heroicons:trash" class="btn-ic" /> Clear
       </button>
@@ -180,33 +177,6 @@ function confirmClear() {
     store.clearAll()
     search.value = ''
     page.value = 1
-  }
-}
-
-/* ── CSV export ──────────────────────────────────────────
-   Produces files in the SAME format they were imported in
-   (not the flattened display table): one curated.csv if only
-   curated was imported, or curated.csv + dlq.csv if both were.
-   Only rows for AFEs currently visible (search/sort applied)
-   are included. ──────────────────────────────────────── */
-function downloadCsv(content: string, filename: string) {
-  const blob = new Blob([content], { type: 'text/csv' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-function exportCsv() {
-  const visibleAfeNumbers = filtered.value.map(r => String(r.afe_number))
-  const result = store.exportCurrentView(visibleAfeNumbers)
-  if (!result) return
-
-  downloadCsv(result.curated, 'curated_export.csv')
-  if (result.dlq) {
-    downloadCsv(result.dlq, 'dlq_export.csv')
   }
 }
 </script>
