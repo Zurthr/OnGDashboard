@@ -4,7 +4,7 @@
       <!-- Top-left tab header -->
       <div class="ari-header-tab">
         <span class="tab-text">
-          What <span class="ari-highlight">Ari <span class="sparkle">✨</span></span> Thinks
+          <img src="assets\icons\Ari.png" alt="Ari" style="height:32px; margin-top:12px">
         </span>
       </div>
 
