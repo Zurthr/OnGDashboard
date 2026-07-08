@@ -24,25 +24,29 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const systemPrompt = `You are a regulatory cost analyst assistant for upstream oil and gas PSC supervision. 
-You receive a structured JSON object containing cost benchmarking findings and produce 
-a formal analytical narrative for regulatory review.
+    const systemPrompt = `You are a regulatory cost analyst for upstream oil and gas PSC supervision. 
+Your task is to write a formal cost review narrative based on structured JSON benchmarking data.
 
-STRICT RULES:
-- You may only reference numerical values that exist in the JSON payload
-- Do not introduce any figures, percentages, or claims not present in the input
-- Do not speculate about causes of cost deviations
-- Write in formal regulatory English
-- Structure your output as: (1) Summary of overall deviation, (2) Dominant driver analysis, 
-  (3) Component breakdown, (4) Review recommendation
-- Maximum 200 words`;
+Write exactly 4 sentences. Use all numerical values exactly as they appear in the JSON — do not round, summarize, or approximate them.
 
-    const userMessage = `Generate a regulatory cost review narrative for the following benchmarking findings:\n${JSON.stringify(vedaJson, null, 2)}`;
+Follow this structure precisely:
 
-    // Call Ollama OpenAI-compatible API behind Cloudflare Zero Trust
+Sentence 1: State the total forecasted cost, the approved baseline, the absolute variance in dollars, the percentage deviation, and the severity level.
+Sentence 2: Name the dominant cost driver, state its absolute variance in dollars, its percentage deviation from its own baseline, its contribution ratio to total aggregate variance, and its historical classification.
+Sentence 3: List every non-dominant cost component by name with its percentage deviation in parentheses, and state whether they require escalation.
+Sentence 4: State the regulatory recommendation based on the severity level.
+
+Here is an example of the exact style and detail level required:
+
+"Total proposed cost of $59,794,395 exceeds the approved baseline of $56,723,100, reflecting an aggregate deviation of $3,071,295 or 5.41% at a LOW severity level. Pipeline Costs is identified as the dominant cost driver with a variance of $1,247,274 or 8.50% above its baseline, contributing 40.61% of the total aggregate deviation, though remaining within the normal historical range. All other cost components, namely Substructure Cost (+4.20%), Deck Structure Cost (+4.20%), Production Facilities Cost (+5.00%), General Support Cost (+3.50%), and Certifications and Permits Costs (+2.00%), show reasonable deviations and do not require escalation action. The regulator is advised to request written justification from the contractor regarding the Pipeline Costs increase given its dominant contribution to total variance, though a comprehensive review is not required at this stage."
+
+Now write the narrative for the JSON data provided. Match this style exactly. Do not shorten, summarize, or omit any values.`;
+const userMessage = `Generate a regulatory cost review narrative for the following benchmarking findings. 
+Your response must be 4 sentences and must include every dollar amount and percentage from the data below. 
+Do not summarize or approximate.\n\n${JSON.stringify(vedaJson, null, 2)}`;
     const response: any = await $fetch(`${ollamaBase}/v1/chat/completions`, {
       method: 'POST',
-      timeout: 120_000, // 120s — Ollama LLM generation can be slow
+      timeout: 120_000,
       headers: {
         'CF-Access-Client-Id': clientId,
         'CF-Access-Client-Secret': clientSecret,
@@ -73,7 +77,7 @@ STRICT RULES:
         success: false,
         verified: false,
         message: 'Narrative verification failed — numerical inconsistency detected. Please regenerate.',
-        narrative: narrativeText // Return for debugging/logging
+        narrative: narrativeText
       };
     }
 
@@ -101,7 +105,6 @@ function verifyNarrative(text: string, json: any): boolean {
   function collect(obj: any) {
     if (typeof obj === 'number') {
       jsonNumbers.add(obj);
-      // Add rounded representation
       jsonNumbers.add(Math.round(obj));
     } else if (typeof obj === 'string') {
       const clean = obj.replace(/[$,%]/g, '').trim();
@@ -119,11 +122,7 @@ function verifyNarrative(text: string, json: any): boolean {
 
   collect(json);
 
-  // Extract all numerical tokens from the narrative text
-  // Match standard numbers, decimals, percentages, currency
   const tokens = text.match(/\b\d+(?:,\d+)*(?:\.\d+)?%?\b/g) || [];
-
-  // Whitelist structural or rule constraint numbers
   const whitelist = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 100, 200]);
 
   for (const token of tokens) {
@@ -133,10 +132,8 @@ function verifyNarrative(text: string, json: any): boolean {
     if (isNaN(numVal)) continue;
     if (whitelist.has(numVal)) continue;
 
-    // Check if the number matches any value in the JSON payload
     let found = false;
     for (const jsonNum of jsonNumbers) {
-      // Direct comparison or close matching (within a delta of 0.1 to account for minor rounding)
       if (jsonNum === numVal || Math.abs(jsonNum - numVal) < 0.1) {
         found = true;
         break;

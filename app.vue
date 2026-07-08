@@ -10,7 +10,6 @@
 
 <script setup lang="ts">
 import Sidebar from '~/components/Sidebar.vue'
-import StickyNav from '~/components/StickyNav.vue'
 </script>
 
 <style>

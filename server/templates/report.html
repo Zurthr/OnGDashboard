@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>SKK Migas CAPEX Regulatory Report</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+    font-size: 10pt;
+    line-height: 1.5;
+    color: #1e293b;
+    background: #ffffff;
+  }
+  .page-break { page-break-before: always; padding-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     PAGE 1 — COVER & SUMMARY
+══════════════════════════════════════════ -->
+
+<!-- Title block -->
+<div style="text-align:center;padding:32px 0 24px;">
+  <h1 style="font-size:22pt;font-weight:900;color:#0f172a;letter-spacing:-0.8px;margin-bottom:6px;">
+    Cost Benchmarking Analytical Report
+  </h1>
+  <p style="font-size:12pt;color:#475569;font-weight:400;margin-bottom:10px;">
+    Upstream Offshore Platform Project — Regulatory Review Document
+  </p>
+  <p style="font-size:9.5pt;color:#94a3b8;">
+    Forecast Year: {{forecastYear}} &nbsp;|&nbsp; Based on: {{historicalBasis}} data
+  </p>
+</div>
+<hr style="border:none;border-top:1pt solid #e2e8f0;margin-bottom:22px;"/>
+
+<!-- Scenario Parameters -->
+<h2 style="font-size:11pt;font-weight:800;color:#0f172a;border-left:4px solid #ef4444;padding-left:10px;margin-bottom:14px;letter-spacing:-0.2px;">Scenario Parameters</h2>
+<table style="width:100%;border-collapse:collapse;margin-bottom:22px;">
+  <tbody>
+    {{paramRows}}
+  </tbody>
+</table>
+<hr style="border:none;border-top:1pt solid #e2e8f0;margin-bottom:22px;"/>
+
+<!-- Cost Summary KPIs -->
+<h2 style="font-size:11pt;font-weight:800;color:#0f172a;border-left:4px solid #ef4444;padding-left:10px;margin-bottom:14px;letter-spacing:-0.2px;">Cost Summary</h2>
+{{insightsBlock}}
+<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px;">
+  {{kpiGrid}}
+</div>
+<hr style="border:none;border-top:1pt solid #e2e8f0;margin-bottom:0;"/>
+
+
+<!-- ═══════════════════════════════════════
+     PAGE 2 — COST BREAKDOWN TABLE
+══════════════════════════════════════════ -->
+<div class="page-break">
+  <h2 style="font-size:11pt;font-weight:800;color:#0f172a;border-left:4px solid #ef4444;padding-left:10px;margin-bottom:14px;letter-spacing:-0.2px;">Cost Category Breakdown</h2>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+    <thead>
+      <tr style="background:linear-gradient(90deg,#ef4444,#fb923c);color:#ffffff;">
+        <th style="padding:9px 12px;font-size:9pt;text-align:left;font-weight:700;letter-spacing:0.2px;">Cost Category</th>
+        <th style="padding:9px 12px;font-size:9pt;text-align:right;font-weight:700;">Baseline (USD)</th>
+        <th style="padding:9px 12px;font-size:9pt;text-align:right;font-weight:700;">Forecasted (USD)</th>
+        <th style="padding:9px 12px;font-size:9pt;text-align:right;font-weight:700;">Variance (USD)</th>
+        <th style="padding:9px 12px;font-size:9pt;text-align:right;font-weight:700;">Deviation %</th>
+        <th style="padding:9px 12px;font-size:9pt;text-align:center;font-weight:700;">Driver Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{compRows}}
+      {{totalsRow}}
+    </tbody>
+  </table>
+  <p style="font-size:8pt;color:#94a3b8;font-style:italic;line-height:1.5;margin-bottom:0;">
+    Dominant driver identified using Pareto attribution with an 80% contribution threshold. Historical classification based on standard deviation bands from historical PSC submission records.
+  </p>
+</div>
+
+{{vizSection}}
+{{narrativePage}}
+
+</body>
+</html>

@@ -67,6 +67,9 @@ onMounted(async () => {
   if (!process.client) return
   try {
     const echarts = await import('echarts/core')
+    if (process.client) {
+      (window as any).echarts = echarts
+    }
     const { TreemapChart } = await import('echarts/charts')
     const { TooltipComponent } = await import('echarts/components')
     const { CanvasRenderer } = await import('echarts/renderers')

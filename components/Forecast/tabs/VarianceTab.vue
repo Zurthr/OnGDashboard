@@ -93,6 +93,9 @@ onMounted(async () => {
   try {
     // vue-echarts v6 requires explicit registration of chart types + components
     const echarts = await import('echarts/core')
+    if (process.client) {
+      (window as any).echarts = echarts
+    }
     const { BarChart, PieChart } = await import('echarts/charts')
     const {
       GridComponent,

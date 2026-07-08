@@ -3,7 +3,7 @@
     <!-- Custom Top-Left Header Tab -->
     <div class="ari-header-tab">
       <span class="tab-text">
-        What <span class="ari-highlight">Ari <span class="sparkle">✨</span></span> Thinks
+        <img src="assets\icons\Ari.png" alt="Ari" class="ari-icon">
       </span>
     </div>
 

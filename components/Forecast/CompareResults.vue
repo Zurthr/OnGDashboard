@@ -1,26 +1,27 @@
 <template>
   <div class="compare-results-section">
     <!-- Row 0: Section Label -->
-    <div class="section-label-row">
-      <div class="section-label-block">
-        <span class="compare-label">Compare</span>
-        <h1 class="results-label">Results</h1>
-      </div>
-    </div>
+
 
     <!-- 3-column grid: Cost Basis | Forecasted | Variance -->
     <div class="results-grid">
 
       <!-- COL 1: Cost Basis -->
       <div class="col-basis">
+        <div style="display: flex; flex-direction: row; gap: 52px;">
+        <div class="section-label-block">
+          <span class="compare-label">Compare</span>
+          <h1 class="results-label">Results</h1>
+        </div>
         <div class="col-header-block">
           <span class="col-header-label">Cost Basis</span>
           <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse header-skeleton"></div>
           <span v-else class="col-header-value num-font">{{ formatCurrency(store.summaryFindings.baselineTotal) }}</span>
-          <span class="col-header-subtext">
-            <span class="subtext-bold num-font">1,097</span> <span class="subtext-unit">US$/ft</span>
+          <span v-if="!store.loadingDetails" class="col-header-subtext">
+            <span class="subtext-bold num-font">{{ baselineCostPerFoot }}</span> <span class="subtext-unit">US$/ft</span>
           </span>
         </div>
+      </div>
 
         <!-- Basis Cards -->
         <div class="cards-list">
@@ -53,8 +54,8 @@
             <span class="col-header-label">Forecasted</span>
             <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse header-skeleton"></div>
             <span v-else class="col-header-value num-font forecast-value-color">{{ formatCurrency(store.summaryFindings.forecastTotal) }}</span>
-            <span class="col-header-subtext is-red">
-              <span class="subtext-bold num-font">1,097</span> <span class="subtext-unit">US$/ft</span>
+            <span v-if="!store.loadingDetails" class="col-header-subtext is-red">
+              <span class="subtext-bold num-font">{{ forecastCostPerFoot }}</span> <span class="subtext-unit">US$/ft</span>
             </span>
           </div>
 
@@ -89,12 +90,9 @@
           </div>
           <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse header-skeleton"></div>
           <span v-else class="col-header-value num-font variance-value-color">{{ formatCurrency(store.summaryFindings.absoluteVarianceTotal) }}</span>
-
-          <!-- Variance Sub-columns header -->
-          <div class="variance-subheader-row">
-            <span class="variance-subcol-label">Amount (USD)</span>
-            <span class="variance-subcol-label">in %s</span>
-          </div>
+          <span v-if="!store.loadingDetails" class="col-header-subtext variance-subtext">
+            <span class="subtext-bold num-font">{{ varianceCostPerFoot }}</span> <span class="subtext-unit">US$/ft</span>
+          </span>
 
           <!-- Variance Cards -->
           <div class="cards-list">
@@ -103,18 +101,22 @@
               :key="finding.costType"
               class="variance-card-row"
             >
-              <div class="variance-cell variance-cell-amount">
-                <span class="card-currency">in USD</span>
+              <div class="variance-cell">
                 <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-value-skeleton"></div>
-                <span v-else class="card-value num-font" :class="finding.absoluteVariance > 0 ? 'var-positive' : 'var-negative'">
-                  {{ formatCurrency(finding.absoluteVariance) }}
-                </span>
-              </div>
-              <div class="variance-cell variance-cell-pct">
-                <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-value-skeleton"></div>
-                <span v-else class="pct-value num-font" :class="finding.percentageDeviation > 0 ? 'var-positive' : 'var-negative'">
-                  {{ finding.percentageDeviation > 0 ? '+' : '' }}{{ finding.percentageDeviation }}%
-                </span>
+                <div v-else class="variance-cell-inner">
+                  <span
+                    class="card-value num-font"
+                    :class="finding.absoluteVariance > 0 ? 'var-positive' : 'var-negative'"
+                  >
+                    {{ formatCurrency(finding.absoluteVariance) }}
+                  </span>
+                  <span
+                    class="card-value num-font"
+                    :class="finding.percentageDeviation > 0 ? 'var-positive' : 'var-negative'"
+                  >
+                    {{ finding.percentageDeviation > 0 ? '+' : '' }}{{ finding.percentageDeviation }}%
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -126,11 +128,26 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useVedaStore } from '~/stores/vedaStore'
 import { useFormatters } from '~/composables/useFormatters'
 
 const store = useVedaStore()
-const { formatCurrency, getSeverityClass, getSeverityLabel } = useFormatters()
+const { formatCurrency, formatCostPerFoot, getSeverityClass, getSeverityLabel } = useFormatters()
+
+const pipeLength = computed(() => store.navParams.pipeLength)
+
+const baselineCostPerFoot = computed(() =>
+  formatCostPerFoot(store.summaryFindings.baselineTotal, pipeLength.value)
+)
+
+const forecastCostPerFoot = computed(() =>
+  formatCostPerFoot(store.summaryFindings.forecastTotal, pipeLength.value)
+)
+
+const varianceCostPerFoot = computed(() =>
+  formatCostPerFoot(store.summaryFindings.absoluteVarianceTotal, pipeLength.value)
+)
 </script>
 
 <style scoped>
@@ -217,6 +234,10 @@ const { formatCurrency, getSeverityClass, getSeverityLabel } = useFormatters()
 
 .col-header-subtext.is-red {
   color: #f43f5e;
+}
+
+.col-header-subtext.variance-subtext {
+  color: #6b8f4a;
 }
 
 .subtext-bold {
@@ -322,23 +343,6 @@ const { formatCurrency, getSeverityClass, getSeverityLabel } = useFormatters()
   color: #3a5c20;
 }
 
-/* Variance sub-column header row */
-.variance-subheader-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-  margin-bottom: 10px;
-  margin-top: 12px;
-}
-
-.variance-subcol-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #6b8f4a;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-
 /* =============================================
    CARDS LIST (shared)
    ============================================= */
@@ -407,7 +411,7 @@ const { formatCurrency, getSeverityClass, getSeverityLabel } = useFormatters()
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  min-width: 100px;
+  min-width: 180px;
 }
 
 .card-currency {
@@ -466,9 +470,6 @@ const { formatCurrency, getSeverityClass, getSeverityLabel } = useFormatters()
    VARIANCE CARDS
    ============================================= */
 .variance-card-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
   min-height: 76px;
 }
 
@@ -480,22 +481,14 @@ const { formatCurrency, getSeverityClass, getSeverityLabel } = useFormatters()
   display: flex;
   flex-direction: column;
   justify-content: center;
+  min-height: 76px;
 }
 
-.variance-cell-amount {
-  flex: 1;
-}
-
-.variance-cell-pct {
-  min-width: 68px;
+.variance-cell-inner {
+  display: flex;
   align-items: center;
-  text-align: center;
-}
-
-.pct-value {
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .var-positive {

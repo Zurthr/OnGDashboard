@@ -3,12 +3,7 @@
 
       <!-- ── Logo ─────────────────────────────────── -->
       <div class="sidebar-logo">
-        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
-                fill="#fb923c" fill-opacity="0.3"/>
-          <circle cx="12" cy="9" r="3.5" fill="#ef4444"/>
-          <circle cx="12" cy="9" r="1.5" fill="#ffffff"/>
-        </svg>
+        <img src="assets\icons\skk.png" alt="SKK Migas" class="logo-icon">
         <div class="logo-text">
           <span class="logo-org">SKK Migas</span>
           <span class="logo-product">Cost Estimation</span>
@@ -21,25 +16,13 @@
 
         <!-- Dashboard -->
         <NuxtLink to="/" class="nav-item" :class="{ 'nav-item--active': route.path === '/' }">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="3" y="3" width="8" height="8" rx="2" fill="#fb923c"/>
-            <rect x="13" y="3" width="8" height="8" rx="2" fill="#fca5a5"/>
-            <rect x="3" y="13" width="8" height="8" rx="2" fill="#fca5a5"/>
-            <rect x="13" y="13" width="8" height="8" rx="2" fill="#ef4444"/>
-          </svg>
+          <img src="assets\icons\db.png" alt="Dashboard" class="nav-icon">
           <span class="nav-label">Dashboard</span>
         </NuxtLink>
 
         <!-- Forecast & Compare -->
         <NuxtLink to="/forecast" class="nav-item" :class="{ 'nav-item--active': route.path === '/forecast' }">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="3"  y="3"  width="7.5" height="7.5" rx="2" fill="#fb923c"/>
-            <rect x="13.5" y="3" width="7.5" height="7.5" rx="2" fill="#fca5a5"/>
-            <rect x="3"  y="13.5" width="7.5" height="7.5" rx="2" fill="#fca5a5"/>
-            <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2" fill="#ef4444"/>
-            <line x1="10.5" y1="6.75" x2="13.5" y2="6.75" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
-            <line x1="10.5" y1="17.25" x2="13.5" y2="17.25" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
-          </svg>
+          <img src="assets\icons\forecast.png" alt="Forecast" class="nav-icon">
           <span class="nav-label">Forecast Eng.</span>
         </NuxtLink>
       </div>
@@ -164,12 +147,12 @@ const route = useRoute()
 .sidebar-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
 }
 
 .logo-icon {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 33px;
   flex-shrink: 0;
 }
 
