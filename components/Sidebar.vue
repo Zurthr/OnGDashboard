@@ -31,15 +31,27 @@
       <div class="nav-section">
         <span class="nav-section-label">General</span>
 
-        <!-- Database -->
-        <NuxtLink to="/db" class="nav-item">
-          <img src="assets\icons\data.png" alt="Database" class="nav-icon">
-          <span class="nav-label">Database</span>
+        <!-- Repository -->
+        <NuxtLink to="/repo" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="12" cy="5.5" rx="7" ry="2.5" fill="#fb923c"/>
+            <path d="M5 5.5v5c0 1.38 3.13 2.5 7 2.5s7-1.12 7-2.5v-5" fill="#fca5a5" fill-opacity="0.6"/>
+            <path d="M5 10.5v5c0 1.38 3.13 2.5 7 2.5s7-1.12 7-2.5v-5" fill="#ef4444" fill-opacity="0.4"/>
+            <ellipse cx="12" cy="5.5" rx="7" ry="2.5" fill="none" stroke="#ef4444" stroke-width="1.2"/>
+          </svg>
+          <span class="nav-label">Repository</span>
         </NuxtLink>
 
         <!-- Extract Reports -->
-        <NuxtLink to="/db/extract" class="nav-item">
-          <img src="assets\icons\extract.png" alt="Extract Reports" class="nav-icon">
+        <NuxtLink to="/extract" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="3" width="14" height="18" rx="2" fill="#fca5a5" fill-opacity="0.4"/>
+            <rect x="4" y="3" width="14" height="7" rx="2" fill="#fb923c"/>
+            <line x1="7" y1="13.5" x2="17" y2="13.5" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="7" y1="17"   x2="13" y2="17"   stroke="#ef4444" stroke-width="1.5" stroke-linecap="round"/>
+            <polyline points="14.5,15.5 17.5,18.5 14.5,21.5" stroke="#ef4444" stroke-width="1.5"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
           <span class="nav-label">Extract Reports</span>
         </NuxtLink>
       </div>
