@@ -1,29 +1,29 @@
 <template>
   <div class="page">
+    <RepositoryStickyNav>
+      <button class="btn btn-ghost" @click="curatedInput?.click()">
+        <Icon name="heroicons:arrow-up-tray" class="btn-ic" /> Import Curated
+      </button>
+      <input ref="curatedInput" type="file" accept=".csv" hidden @change="e => handleImport(e, 'curated')" />
+      <button
+        class="btn btn-ghost"
+        :disabled="!store.curatedImported"
+        :title="!store.curatedImported ? 'Import the curated CSV first' : ''"
+        @click="dlqInput?.click()"
+      >
+        <Icon name="heroicons:exclamation-triangle" class="btn-ic" /> Import DLQ
+      </button>
+      <input ref="dlqInput" type="file" accept=".csv" hidden @change="e => handleImport(e, 'dlq')" />
+      <button class="btn btn-ghost" :disabled="!store.totalRecords" @click="exportCsv">
+        <Icon name="heroicons:arrow-down-tray" class="btn-ic" /> Export
+      </button>
+      <button class="btn btn-danger" :disabled="!store.totalRecords && !store.dlqCount" @click="confirmClear">
+        <Icon name="heroicons:trash" class="btn-ic" /> Clear
+      </button>
+    </RepositoryStickyNav>
+
     <div class="page-head">
-      <div>
-        <span class="eyebrow">AFE Module</span>
-        <h1 class="page-title">Project Repository</h1>
-        <p class="page-sub">
-          Curated AFE technical parameters from the ETL pipeline. Import the curated CSV and optionally the DLQ CSV to flag quality issues.
-        </p>
-      </div>
-      <div class="head-actions">
-        <button class="btn btn-ghost" @click="curatedInput?.click()">
-          <Icon name="heroicons:arrow-up-tray" class="btn-ic" /> Import Curated
-        </button>
-        <input ref="curatedInput" type="file" accept=".csv" hidden @change="e => handleImport(e, 'curated')" />
-        <button class="btn btn-ghost" @click="dlqInput?.click()">
-          <Icon name="heroicons:exclamation-triangle" class="btn-ic" /> Import DLQ
-        </button>
-        <input ref="dlqInput" type="file" accept=".csv" hidden @change="e => handleImport(e, 'dlq')" />
-        <button class="btn btn-ghost" :disabled="!store.totalRecords" @click="exportCsv">
-          <Icon name="heroicons:arrow-down-tray" class="btn-ic" /> Export
-        </button>
-        <button class="btn btn-danger" :disabled="!store.totalRecords && !store.dlqCount" @click="confirmClear">
-          <Icon name="heroicons:trash" class="btn-ic" /> Clear
-        </button>
-      </div>
+      <h1 class="page-title">Project Repository</h1>
     </div>
 
     <!-- Warnings -->
@@ -36,17 +36,8 @@
       <span>DLQ data not loaded. Import <strong>dlq_records.csv</strong> to see quality flags on cells, or continue without it.</span>
     </div>
 
-    <!-- Scorecard strip -->
-    <div class="scorecard-row" v-if="store.curatedImported">
-      <div class="sc-card"><span class="sc-label">Total AFEs</span><span class="sc-val num-font">{{ store.totalRecords }}</span></div>
-      <div class="sc-card"><span class="sc-label">Platform</span><span class="sc-val num-font">{{ store.platformCount }}</span></div>
-      <div class="sc-card"><span class="sc-label">Avg Water Depth</span><span class="sc-val num-font">{{ store.avgWaterDepth }}</span></div>
-      <div class="sc-card" :class="{ 'warn-card': store.dlqCount > 0 }"><span class="sc-label">DLQ Flags</span><span class="sc-val num-font">{{ store.dlqCount }}</span></div>
-    </div>
-
     <!-- Table -->
     <section class="card table-card" v-if="store.curatedImported">
-      <span class="card-bar"></span>
       <div class="table-toolbar">
         <div class="search-wrap">
           <Icon name="heroicons:magnifying-glass" class="search-ic" />
@@ -85,7 +76,7 @@
 
       <!-- Legend -->
       <div v-if="store.dlqCount > 0" class="legend">
-        <span class="flag-dot flag-dot--legend" /> <span class="legend-text">Cell flagged by DLQ</span>
+        <span class="flag-dot flag-dot--legend" /> <span class="legend-text">Cell flagged by DLQ — hover for details</span>
       </div>
 
       <!-- Pagination -->
@@ -192,34 +183,45 @@ function confirmClear() {
   }
 }
 
-/* ── CSV export ──────────────────────────────────────── */
-function exportCsv() {
-  const exportCols = columns
-  const header = exportCols.map(c => c.key).join(',')
-  const body = filtered.value.map(r => exportCols.map(c => {
-    const v = r[c.key]; return v == null ? '' : String(v).includes(',') ? `"${v}"` : String(v)
-  }).join(',')).join('\n')
-  const blob = new Blob([header + '\n' + body], { type: 'text/csv' })
+/* ── CSV export ──────────────────────────────────────────
+   Produces files in the SAME format they were imported in
+   (not the flattened display table): one curated.csv if only
+   curated was imported, or curated.csv + dlq.csv if both were.
+   Only rows for AFEs currently visible (search/sort applied)
+   are included. ──────────────────────────────────────── */
+function downloadCsv(content: string, filename: string) {
+  const blob = new Blob([content], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
-  const a = document.createElement('a'); a.href = url; a.download = 'afe_repository_export.csv'; a.click()
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
   URL.revokeObjectURL(url)
+}
+
+function exportCsv() {
+  const visibleAfeNumbers = filtered.value.map(r => String(r.afe_number))
+  const result = store.exportCurrentView(visibleAfeNumbers)
+  if (!result) return
+
+  downloadCsv(result.curated, 'curated_export.csv')
+  if (result.dlq) {
+    downloadCsv(result.dlq, 'dlq_export.csv')
+  }
 }
 </script>
 
 <style scoped>
-.page { width: 1064px; max-width: 1064px; padding: 48px 32px 80px; box-sizing: border-box; }
-.page-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 16px; }
-.eyebrow { font-family: 'Inter'; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #94a3b8; }
-.page-title { font-family: 'Poppins'; font-size: 30px; font-weight: 800; letter-spacing: -0.6px; color: #0f172a; margin-top: 4px; }
-.page-sub { font-size: 14.5px; color: #64748b; max-width: 520px; margin-top: 8px; line-height: 1.6; }
-.head-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.page { width: 1064px; max-width: 1064px; padding: 96px 32px 80px; box-sizing: border-box; }
+.page-head { margin-bottom: 20px; }
+.page-title { font-family: 'Poppins'; font-size: 30px; font-weight: 800; letter-spacing: -0.6px; color: #0f172a; margin: 0; }
 
-.btn { display: inline-flex; align-items: center; gap: 7px; border: none; border-radius: 12px; padding: 10px 18px; font-family: 'Inter'; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all .18s ease; }
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 2px solid #ef4444; border-radius: 99px; padding: 8px 16px; font-family: 'Poppins', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .2s ease; background: #fff; color: #ef4444; white-space: nowrap; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn-ic { width: 16px; height: 16px; }
-.btn-ghost { background: #fff; color: #475569; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
-.btn-ghost:not(:disabled):hover { background: #f8fafc; }
-.btn-danger { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.btn-ic { width: 14px; height: 14px; }
+.btn-ghost { background: #fff; color: #ef4444; border: 2px solid #ef4444; }
+.btn-ghost:not(:disabled):hover { background: #fff5f5; }
+.btn-danger { background: #fef2f2; color: #b91c1c; border: 2px solid #fecaca; }
 .btn-danger:not(:disabled):hover { background: #fee2e2; }
 
 /* Warning banners */
@@ -228,15 +230,15 @@ function exportCsv() {
 .warn-ic { width: 20px; height: 20px; flex-shrink: 0; }
 
 /* Scorecard */
-.scorecard-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
-.sc-card { background: #fff; border-radius: 12px; padding: 12px 8px; box-shadow: 0 4px 16px rgba(0,0,0,.04); position: relative; overflow: hidden;  flex-direction: column; align-items: center; justify-content: center; text-align: center}
+.scorecard-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.sc-card { background: #fff; border-radius: 20px; padding: 20px 22px; box-shadow: 0 4px 16px rgba(0,0,0,.04); }
 .warn-card { background: #fffbeb; }
-.sc-label { font-family: 'Inter'; font-size: 10px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: #94a3b8; display: block; margin-bottom: 2px; }
-.sc-val { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 6px; display: block; letter-spacing: -0.5px;}
+.sc-label { font-family: 'Inter'; font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: #94a3b8; display: block; }
+.sc-val { font-size: 28px; font-weight: 800; color: #0f172a; margin-top: 6px; display: block; letter-spacing: -0.5px; }
 .num-font { font-family: 'Inter', monospace; }
 
 /* Table card */
-.card { position: relative; background: #fff; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.03); padding: 28px; margin-bottom: 12px; overflow: hidden;}
+.card { position: relative; background: #fff; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.03); padding: 28px; margin-bottom: 24px; overflow: hidden; }
 
 .table-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .search-wrap { position: relative; flex: 1; max-width: 400px; }
@@ -247,12 +249,12 @@ function exportCsv() {
 .result-count { font-family: 'Inter'; font-size: 12px; font-weight: 600; color: #94a3b8; }
 
 .table-scroll { overflow-x: auto; margin: 0 -28px; padding: 0 28px; }
-.repo-table { width: 100%; border-collapse: collapse; min-width: 1200px; }
-.repo-table th { text-align: left; font-family: 'Inter'; font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: #94a3b8; padding: 0 10px 10px; border-bottom: 2px solid #f1f5f9; white-space: nowrap; }
+.repo-table { width: auto; min-width: 100%; border-collapse: collapse; table-layout: auto; }
+.repo-table th { text-align: left; font-family: 'Inter'; font-size: 10.5px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: #94a3b8; padding: 0 6px 8px; border-bottom: 2px solid #f1f5f9; white-space: nowrap; width: 1%; }
 .sortable-th { cursor: pointer; user-select: none; }
 .sortable-th:hover { color: #ef4444; }
 .sort-ic { width: 14px; height: 14px; vertical-align: middle; margin-left: 2px; }
-.repo-table td { padding: 11px 10px; border-bottom: 1px solid #f8fafc; font-size: 13px; color: #1e293b; white-space: nowrap; position: relative; }
+.repo-table td { padding: 9px 6px; border-bottom: 1px solid #f8fafc; font-size: 13px; color: #1e293b; white-space: nowrap; position: relative; width: 1%; }
 .repo-table tbody tr:hover { background: #fffaf9; }
 .cell-empty { color: #cbd5e1; font-style: italic; }
 .cell-flagged { background: #fff7ed; }
