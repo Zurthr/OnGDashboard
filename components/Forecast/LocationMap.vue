@@ -1,7 +1,7 @@
 <template>
   <div class="visualization-panel">
     <div class="panel-header">
-      <span class="panel-title">Visualization: Operation Location</span>
+      <span class="panel-title">Visualizations</span>
     </div>
 
     <div class="panel-content-card">

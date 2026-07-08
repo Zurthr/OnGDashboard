@@ -1,0 +1,22 @@
+[33m22eeafc[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mforecast[m[33m)[m Pre API push
+[33m46a9ada[m Changed navbar to be more accurate'
+[33m25e81a2[m Navv a bit broken but still usable
+[33m36e9fa5[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/forecast[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m funny
+[33mc77ad83[m Added other pages + error handling (404)
+[33m625eea2[m Anims for tab
+[33m87bac9c[m Finished treemap view
+[33m22d24c9[m Changed some things that correlatae to sidebar
+[33m1f2b5c1[m Added support for smaller screens for the sidebar
+[33mbac309e[m Final chart edits
+[33m1822153[m Fully working echarts, but need to be adjusted
+[33m1006a02[m Initial echarts impementation, broken tab switching
+[33mc7a482c[m Indentation fix on stickies and cards
+[33md911dbb[m scorecard csses
+[33m2fec838[m Most css fixed but wld like to still change stuff
+[33m501045b[m Also barely changed sidebar
+[33mb469042[m basically no changes post ai but ugly map implementation
+[33m40e7ab4[m =more changes
+[33m4639dc2[m 30% of css + db fixed
+[33ma21fa56[m Sticky nav
+[33m4265dbe[m Hello MIGAS
+[33mb99efae[m Hello ESKAKA

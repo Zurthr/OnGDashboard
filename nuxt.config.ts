@@ -14,5 +14,12 @@ export default defineNuxtConfig({
 
   build: {
     transpile: [/echarts/, 'vue-echarts', 'resize-detector']
+  },
+
+  // Puppeteer runs server-side only — exclude from client bundle
+  nitro: {
+    externals: {
+      external: ['puppeteer']
+    }
   }
 })

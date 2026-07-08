@@ -10,6 +10,11 @@ export const useFormatters = () => {
     }).format(val)
   }
 
+  const formatCostPerFoot = (total: number, pipeLength: number | null): string => {
+    if (pipeLength == null || pipeLength <= 0) return '—'
+    return formatCurrency(total / pipeLength)
+  }
+
   const getSeverityLabel = (deviation: number): string => {
     if (deviation <= 5) return 'Low'
     if (deviation <= 15) return 'Medium'
@@ -33,5 +38,5 @@ export const useFormatters = () => {
     return 'severity-critical'
   }
 
-  return { formatCurrency, getSeverityLabel, getSeverityBadgeClass, getSeverityClass }
+  return { formatCurrency, formatCostPerFoot, getSeverityLabel, getSeverityBadgeClass, getSeverityClass }
 }

@@ -15,7 +15,6 @@ export default defineEventHandler(async (event) => {
   try {
     const pool = getDbPool();
 
-    // Fetch baseline & forecast costs
     const [costRows]: any = await pool.query(
       'SELECT * FROM scenario_costs WHERE scenario_id = ? ORDER BY FIELD(row_type, "Baseline", "Forecast")',
       [scenarioId]
@@ -38,7 +37,6 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // Mapping db columns to standard cost categories
     const categories = [
       { key: 'substructures', label: 'Substructure Cost' },
       { key: 'ts_deck_structure', label: 'Deck Structure Cost' },
@@ -48,7 +46,6 @@ export default defineEventHandler(async (event) => {
       { key: 'general_support', label: 'General Support Cost' }
     ];
 
-    // Compute raw absolute variances for each component to get totalAbsoluteVariance
     const rawComponents = categories.map(cat => {
       const baseline = Number(baselineRow[cat.key]) || 0;
       const forecast = Number(forecastRow[cat.key]) || 0;
@@ -66,16 +63,27 @@ export default defineEventHandler(async (event) => {
 
     const totalAbsoluteVariance = rawComponents.reduce((sum, c) => sum + Math.abs(c.absoluteVariance), 0);
 
-    // Compute contributionRatio and flag dominant driver
-    let maxAbsVar = -1;
-    let dominantDriverIndex = 0;
+        // Sort components by absolute variance descending
+    const sortedByContribution = [...rawComponents]
+    .map((rc, originalIdx) => ({
+      ...rc,
+      originalIdx,
+      absVariance: Math.abs(rc.absoluteVariance),
+      contributionRatio: totalAbsoluteVariance > 0
+        ? (Math.abs(rc.absoluteVariance) / totalAbsoluteVariance) * 100
+        : 0
+    }))
+    .sort((a, b) => b.absVariance - a.absVariance);
 
-    for (let i = 0; i < rawComponents.length; i++) {
-      const absVar = Math.abs(rawComponents[i].absoluteVariance);
-      if (absVar > maxAbsVar) {
-        maxAbsVar = absVar;
-        dominantDriverIndex = i;
-      }
+    // Walk down sorted list until cumulative contribution >= threshold
+    const PARETO_THRESHOLD = 80;
+    let cumulative = 0;
+    const dominantDriverIndices = new Set<number>();
+
+    for (const component of sortedByContribution) {
+    cumulative += component.contributionRatio;
+    dominantDriverIndices.add(component.originalIdx);
+    if (cumulative >= PARETO_THRESHOLD) break;
     }
 
     const baselineTotal = Number(baselineRow.total_cost_sum) || 0;
@@ -103,7 +111,7 @@ export default defineEventHandler(async (event) => {
         absoluteVariance: rc.absoluteVariance,
         percentageDeviation: Number(rc.percentageDeviation.toFixed(2)),
         contributionRatio: Number(contributionRatio.toFixed(2)),
-        isDominantDriver: idx === dominantDriverIndex,
+        isDominantDriver: dominantDriverIndices.has(idx),
         historicalContext: {
           historicalFlag: compFlag
         }
@@ -131,7 +139,7 @@ export default defineEventHandler(async (event) => {
       overallSeverity = 'MEDIUM';
     }
 
-    const dominantDriver = componentFindings[dominantDriverIndex]?.costType || 'None';
+    const dominantDrivers = componentFindings.filter(c => c.isDominantDriver).map(c => c.costType).join(', ') || 'None';
 
     return {
       summaryFindings: {
@@ -141,7 +149,7 @@ export default defineEventHandler(async (event) => {
         percentageDeviationTotal: Number(percentageDeviationTotal.toFixed(2))
       },
       componentFindings,
-      dominantDriver,
+      dominantDrivers,
       overallSeverity
     };
 
