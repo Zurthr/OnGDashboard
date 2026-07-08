@@ -40,7 +40,7 @@
 
         <!-- Extract Reports -->
         <NuxtLink to="/extract" class="nav-item">
-          <img src="essets\icons\extract.png" alt="Dashboard" class="nav-icon">
+          <img src="assets\icons\extract.png" alt="Extract Reports" class="nav-icon">
           <span class="nav-label">Extract Reports</span>
         </NuxtLink>
       </div>
