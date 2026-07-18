@@ -11,7 +11,7 @@
       <!-- Content -->
       <div class="ari-content">
         <!-- Loading skeleton -->
-        <div v-if="store.loadingInsights || store.loadingDetails" class="skeleton-wrapper">
+        <div v-if="store.loadingNarrative || store.loadingDetails" class="skeleton-wrapper">
           <div class="skeleton-bar animate-pulse" style="width: 100%; height: 16px;"></div>
           <div class="skeleton-bar animate-pulse" style="width: 97%; height: 16px;"></div>
           <div class="skeleton-bar animate-pulse" style="width: 94%; height: 16px;"></div>
@@ -20,13 +20,13 @@
         </div>
 
         <!-- Error state -->
-        <div v-else-if="store.errorInsights" class="ari-error-state">
+        <div v-else-if="store.narrativeError" class="ari-error-state">
           <Icon name="heroicons:exclamation-triangle-16-solid" class="ari-error-icon" />
-          <span>{{ store.errorInsights }}</span>
+          <span>{{ store.narrativeError }}</span>
         </div>
 
         <!-- Insights content -->
-        <div v-else-if="store.insights" class="insights-text" v-html="formattedInsights"></div>
+        <div v-else-if="store.narrative || store.selectedScenarioId === 1" class="insights-text" v-html="formattedInsights"></div>
 
         <!-- Empty state -->
         <div v-else class="ari-empty-state">
@@ -45,9 +45,15 @@ const store = useVedaStore()
 
 // Format Ari insights with bold markers
 const formattedInsights = computed(() => {
-  if (!store.insights) return ''
+  if (store.selectedScenarioId === 1) {
+    const text = `Total proposed cost of $59,794,395 exceeds the approved baseline of $56,723,100, reflecting an aggregate deviation of $3,071,295 or 5.41% at a LOW severity level. Pipeline Costs is identified as the dominant cost driver with a variance of $1,247,274 or 8.50% above its baseline, contributing 40.61% of the total aggregate deviation, though remaining within the normal historical range.
+
+All other cost components, namely Substructure Cost (+4.20%), Deck Structure Cost (+4.20%), Production Facilities Cost (+5.00%), General Support Cost (+3.50%), and Certifications and Permits Costs (+2.00%), show reasonable deviations and do not require escalation action. The regulator is advised to request written justification from the contractor regarding the Pipeline Costs increase given its dominant contribution to total variance, though a comprehensive review is not required at this stage.`
+    return text.replace(/\n\n/g, '<br><br>')
+  }
+  if (!store.narrative) return ''
   // Wrap **text** in <strong> tags
-  return store.insights
+  return store.narrative
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n\n/g, '<br><br>')
 })

@@ -49,6 +49,54 @@
             </div>
           </div>
 
+          <!-- Summary type selection -->
+          <div class="modal-section" style="margin-top: 20px;">
+            <span class="modal-section-label">Summary Content Type</span>
+            <div class="summary-toggle-group">
+              <div
+                class="summary-card"
+                :class="{
+                  'summary-card--selected': summaryType === 'narrative',
+                  'summary-card--disabled': generating
+                }"
+                @click="!generating && (summaryType = 'narrative')"
+              >
+                <div class="summary-details">
+                  <span class="summary-title">AI Cost Narrative</span>
+                  <span class="summary-desc">Include formal AI narrative page</span>
+                </div>
+                <input
+                  type="radio"
+                  class="summary-radio"
+                  :checked="summaryType === 'narrative'"
+                  :disabled="generating"
+                  readonly
+                />
+              </div>
+
+              <div
+                class="summary-card"
+                :class="{
+                  'summary-card--selected': summaryType === 'insights',
+                  'summary-card--disabled': generating
+                }"
+                @click="!generating && (summaryType = 'insights')"
+              >
+                <div class="summary-details">
+                  <span class="summary-title">Deterministic Insights</span>
+                  <span class="summary-desc">Include rule-based summary insights</span>
+                </div>
+                <input
+                  type="radio"
+                  class="summary-radio"
+                  :checked="summaryType === 'insights'"
+                  :disabled="generating"
+                  readonly
+                />
+              </div>
+            </div>
+          </div>
+
           <!-- Report metadata preview -->
           <div class="modal-meta">
             <div class="meta-item">
@@ -102,6 +150,7 @@ const emit = defineEmits<{ (e: 'update:modelValue', val: boolean): void }>()
 
 const store = useVedaStore()
 const generating = ref(false)
+const summaryType = ref<'narrative' | 'insights'>('narrative')
 
 // ── Viz options ───────────────────────────────────────────────────────────
 const vizOptions = [
@@ -158,6 +207,7 @@ const generatePdf = async () => {
         componentFindings: store.componentFindings,
         insights: store.insights,
         narrative: store.narrative,
+        useNarrative: summaryType.value === 'narrative',
         selectedVisualizations: selected.value,
         scenarioParams: {
           forecastYear:        store.navParams.forecastYear || '2028',
@@ -488,4 +538,75 @@ const generatePdf = async () => {
 .modal-fade-leave-to    { opacity: 0; }
 .modal-fade-enter-from .modal-card { transform: scale(0.96) translateY(8px); }
 .modal-fade-leave-to   .modal-card { transform: scale(0.96) translateY(8px); }
+
+/* ── Summary Type selection ──────────────────────────────────── */
+.summary-toggle-group {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.summary-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.summary-card:hover:not(.summary-card--disabled) {
+  border-color: #fca5a5;
+  background: #fff5f5;
+  transform: translateY(-1px);
+}
+
+.summary-card--selected {
+  border-color: #ef4444;
+  background: linear-gradient(160deg, #fff5f5 0%, #fef9f0 100%);
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.1);
+}
+
+.summary-card--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.summary-radio {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 18px;
+  height: 18px;
+  accent-color: #ef4444;
+  cursor: pointer;
+}
+
+.summary-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.summary-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.summary-card--selected .summary-title {
+  color: #ef4444;
+}
+
+.summary-desc {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.3;
+}
 </style>

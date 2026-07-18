@@ -3,7 +3,7 @@
     <!-- Custom Top-Left Header Tab -->
     <div class="ari-header-tab">
       <span class="tab-text">
-        <img src="assets\icons\Ari.png" alt="Ari" class="ari-icon">
+        <img src="assets\icons\Ari.png" alt="Ari" style="height:32px; margin-top:12px">
       </span>
     </div>
 

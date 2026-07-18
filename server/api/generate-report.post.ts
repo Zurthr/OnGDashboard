@@ -110,6 +110,7 @@ export default defineEventHandler(async (event) => {
     componentFindings = [],
     insights = null,
     narrative = null,
+    useNarrative = true,
     selectedVisualizations = ['location', 'variance', 'treemap'],
     scenarioParams = {} as ScenarioParams,
   } = body || {}
@@ -336,7 +337,7 @@ export default defineEventHandler(async (event) => {
     </div>` : ''
 
   // ── Narrative page ─────────────────────────────────────────────────────────
-  const narrativePageHtml = narrative ? `
+  const narrativePageHtml = (narrative && useNarrative) ? `
     <div class="page-break">
       <h2 style="font-size:11pt;font-weight:800;color:#0f172a;border-left:4px solid #ef4444;padding-left:10px;margin-bottom:14px;letter-spacing:-0.2px;">Analytical Findings</h2>
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #ef4444;border-radius:6px;padding:18px 20px;margin-bottom:16px;">
@@ -349,7 +350,7 @@ export default defineEventHandler(async (event) => {
     </div>` : ''
 
   // ── Insights block ─────────────────────────────────────────────────────────
-  const insightsBlockHtml = insights ? `
+  const insightsBlockHtml = (insights && !useNarrative) ? `
     <div style="background:linear-gradient(135deg,#fff7ed,#fff);border:1px solid #fed7aa;border-left:4px solid #fb923c;border-radius:6px;padding:14px 16px;margin-bottom:18px;">
       <div style="font-size:8pt;font-weight:700;color:#c2410c;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">▸ VEDA AI Analysis</div>
       <p style="font-size:10pt;color:#431407;line-height:1.65;margin:0;">${insights}</p>
