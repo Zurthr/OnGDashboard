@@ -6,12 +6,12 @@
 
 
     <!-- No-data state -->
-    <div v-if="!store.curatedImported" class="empty-state-card">
+    <div v-if="!store.hasData" class="empty-state-card">
       <Icon name="heroicons:chart-bar" class="empty-ic" />
       <p class="empty-title">No data to visualize</p>
       <p class="empty-hint">
-        Import <strong>curated_records.csv</strong> on the
-        <NuxtLink to="/repo" class="inline-link">Repository</NuxtLink> page first.
+        Go to the <NuxtLink to="/extract" class="inline-link">Extraction</NuxtLink> page and use
+        <strong>Import to Repository</strong> after processing your documents.
       </p>
     </div>
 
@@ -118,7 +118,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { BarChart } from 'echarts/charts'
@@ -130,6 +130,10 @@ use([BarChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer]
 useHead({ title: 'SKK Migas — AFE Dashboard' })
 
 const store = useAfeStore()
+
+onMounted(() => {
+  store.fetchAll()
+})
 
 /* ── Tabs ─────────────────────────────────────────────── */
 const tabs = ['Basic', 'Water Depth, Legs & Slots', 'Weight Distribution', 'Other'] as const
@@ -147,18 +151,18 @@ const C = {
   grid: '#f1f5f9',
 }
 
-/* ── Helpers ──────────────────────────────────────────── */
-const paramKeys = ['water_depth', 'topside_weight', 'jacket_weight', 'piling_weight', 'number_of_legs', 'number_of_slots', 'h2s', 'co2', 'hg']
+/* ── Helpers (keys match afe_records DB columns) ─────── */
+const paramKeys = ['water_depth', 'weight_topside', 'weight_jacket', 'piling_weight', 'number_of_legs', 'number_of_slots', 'impurities_h2s', 'impurities_co2', 'impurities_hg']
 const paramLabels: Record<string, string> = {
-  water_depth: 'Water Depth', topside_weight: 'Topside Wt', jacket_weight: 'Jacket Wt',
+  water_depth: 'Water Depth', weight_topside: 'Topside Wt', weight_jacket: 'Jacket Wt',
   piling_weight: 'Piling Wt', number_of_legs: 'Legs', number_of_slots: 'Slots',
-  h2s: 'H₂S', co2: 'CO₂', hg: 'Hg',
+  impurities_h2s: 'H₂S', impurities_co2: 'CO₂', impurities_hg: 'Hg',
 }
 
 const overallCompleteness = computed(() => {
   const total = store.totalRecords * paramKeys.length
   const found = paramKeys.reduce((acc, k) => acc + store.numericValues(k).length, 0)
-  const textKeys = ['equip_wellhead', 'equip_processing', 'equip_utilities']
+  const textKeys = ['topside_equipment_wellhead', 'topside_equipment_processing', 'topside_equipment_utilities']
   const textFound = textKeys.reduce((acc, k) => acc + store.rows.filter(r => r[k] != null && r[k] !== '').length, 0)
   const adjTotal = total + store.totalRecords * textKeys.length
   return adjTotal ? Math.round(((found + textFound) / adjTotal) * 100) : 0
@@ -189,10 +193,10 @@ const waterDepthChart = computed(() =>
 
 /* ── Weight Distribution — three SEPARATE histograms ─── */
 const topsideWeightChart = computed(() =>
-  makeHistogram(store.numericValues('topside_weight'), [0, 500, 1000, 1500, 2000, 2500, 3000], C.primary)
+  makeHistogram(store.numericValues('weight_topside'), [0, 500, 1000, 1500, 2000, 2500, 3000], C.primary)
 )
 const jacketWeightChart = computed(() =>
-  makeHistogram(store.numericValues('jacket_weight'), [0, 1000, 2000, 3000, 4000, 5000, 6000], C.secondary)
+  makeHistogram(store.numericValues('weight_jacket'), [0, 1000, 2000, 3000, 4000, 5000, 6000], C.secondary)
 )
 const pilingWeightChart = computed(() =>
   makeHistogram(store.numericValues('piling_weight'), [0, 400, 800, 1200, 1600, 2000, 2400], C.tertiary)
@@ -225,25 +229,25 @@ const slotsChart = computed(() => {
 /* ── Impurity grouped bar ────────────────────────────── */
 const impurityChart = computed(() => {
   const rows = store.rows.filter(r =>
-    typeof r.h2s === 'number' || typeof r.co2 === 'number' || typeof r.hg === 'number'
+    typeof r.impurities_h2s === 'number' || typeof r.impurities_co2 === 'number' || typeof r.impurities_hg === 'number'
   )
-  const labels = rows.map(r => (r.asset_name || r.afe_number || '?') as string)
+  const labels = rows.map(r => (r.afe_number || '?') as string)
   return {
     grid: { ...baseGrid, bottom: 48 }, tooltip: { ...tip, trigger: 'axis' as const },
     legend: { bottom: 0, textStyle: { fontFamily: 'Inter', fontSize: 11, color: C.sub } },
     xAxis: { type: 'category' as const, data: labels, axisLabel },
     yAxis: { type: 'value' as const, splitLine, axisLabel },
     series: [
-      { type: 'bar' as const, name: 'H₂S', data: rows.map(r => (typeof r.h2s === 'number' ? r.h2s : 0) as number), itemStyle: { color: C.primary, borderRadius: [4, 4, 0, 0] } },
-      { type: 'bar' as const, name: 'CO₂', data: rows.map(r => (typeof r.co2 === 'number' ? r.co2 : 0) as number), itemStyle: { color: C.secondary, borderRadius: [4, 4, 0, 0] } },
-      { type: 'bar' as const, name: 'Hg', data: rows.map(r => (typeof r.hg === 'number' ? r.hg : 0) as number), itemStyle: { color: C.tertiary, borderRadius: [4, 4, 0, 0] } },
+      { type: 'bar' as const, name: 'H₂S', data: rows.map(r => (typeof r.impurities_h2s === 'number' ? r.impurities_h2s : 0) as number), itemStyle: { color: C.primary, borderRadius: [4, 4, 0, 0] } },
+      { type: 'bar' as const, name: 'CO₂', data: rows.map(r => (typeof r.impurities_co2 === 'number' ? r.impurities_co2 : 0) as number), itemStyle: { color: C.secondary, borderRadius: [4, 4, 0, 0] } },
+      { type: 'bar' as const, name: 'Hg', data: rows.map(r => (typeof r.impurities_hg === 'number' ? r.impurities_hg : 0) as number), itemStyle: { color: C.tertiary, borderRadius: [4, 4, 0, 0] } },
     ],
   }
 })
 
 /* ── Completeness horizontal bar ─────────────────────── */
 const completenessChart = computed(() => {
-  const allKeys = [...paramKeys, 'equip_wellhead', 'equip_processing', 'equip_utilities']
+  const allKeys = [...paramKeys, 'topside_equipment_wellhead', 'topside_equipment_processing', 'topside_equipment_utilities']
   const labels = allKeys.map(k => paramLabels[k] || k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))
   const total = store.totalRecords
   const found = allKeys.map(k => store.rows.filter(r => r[k] != null && r[k] !== '').length)
