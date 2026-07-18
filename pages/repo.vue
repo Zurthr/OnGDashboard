@@ -1,6 +1,7 @@
 <template>
   <div class="page">
     <RepositoryStickyNav>
+<<<<<<< Updated upstream
       <button class="btn btn-ghost" @click="curatedInput?.click()">
         <Icon name="heroicons:arrow-up-tray" class="btn-ic" /> Import Curated
       </button>
@@ -19,6 +20,11 @@
       </button>
       <button class="btn btn-danger" :disabled="!store.totalRecords && !store.dlqCount" @click="confirmClear">
         <Icon name="heroicons:trash" class="btn-ic" /> Clear
+=======
+      <button class="btn btn-ghost" :disabled="store.loading || loadingExtra" @click="refreshAll">
+        <Icon name="heroicons:arrow-path" class="btn-ic" :class="{ spinning: store.loading || loadingExtra }" />
+        {{ (store.loading || loadingExtra) ? 'Refreshing…' : 'Refresh' }}
+>>>>>>> Stashed changes
       </button>
     </RepositoryStickyNav>
 
@@ -27,105 +33,446 @@
     </div>
 
     <!-- Warnings -->
-    <div v-if="!store.curatedImported" class="warn-banner">
-      <Icon name="heroicons:information-circle" class="warn-ic" />
-      <span>No curated data loaded. Import <strong>curated_records.csv</strong> from the Data Engineer to populate the repository.</span>
-    </div>
-    <div v-if="store.curatedImported && !store.dlqImported" class="warn-banner warn-banner--soft">
+    <div v-if="store.error" class="warn-banner">
       <Icon name="heroicons:exclamation-triangle" class="warn-ic" />
-      <span>DLQ data not loaded. Import <strong>dlq_records.csv</strong> to see quality flags on cells, or continue without it.</span>
+      <span>{{ store.error }}</span>
+    </div>
+    <div v-else-if="!store.loading && !store.hasData" class="warn-banner">
+      <Icon name="heroicons:information-circle" class="warn-ic" />
+      <span>No data loaded. Go to the <strong>Extraction</strong> page and use <strong>Import to Repository</strong> after processing your documents.</span>
     </div>
 
-    <!-- Table -->
-    <section class="card table-card" v-if="store.curatedImported">
-      <div class="table-toolbar">
-        <div class="search-wrap">
-          <Icon name="heroicons:magnifying-glass" class="search-ic" />
-          <input v-model="search" class="search-input" placeholder="Search by AFE number, type, asset…" />
+    <template v-if="store.hasData">
+      <!-- Tab bar -->
+      <div class="tab-bar-row">
+        <div class="tab-buttons">
+          <button
+            v-for="tab in tabs"
+            :key="tab"
+            class="tab-btn"
+            :class="{ 'active-tab': activeTab === tab }"
+            @click="activeTab = tab"
+          >
+            {{ tab }}
+          </button>
         </div>
-        <span class="result-count">{{ filtered.length }} record{{ filtered.length !== 1 ? 's' : '' }}</span>
       </div>
 
-      <div class="table-scroll">
-        <table class="repo-table">
-          <thead>
-            <tr>
-              <th v-for="col in columns" :key="col.key" @click="toggleSort(col.key)" class="sortable-th">
-                <span>{{ col.label }}</span>
-                <Icon v-if="sortKey === col.key" :name="sortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(row, i) in paginated" :key="i">
-              <td v-for="col in columns" :key="col.key"
-                :class="{
-                  'num-font': col.numeric,
-                  'cell-empty': row[col.key] == null || row[col.key] === '',
-                  'cell-flagged': store.hasDlqFlag(row._afe as string, col.paramKey || col.key, col.subParam)
-                }"
-                :title="store.getDlqTooltip(row._afe as string, col.paramKey || col.key, col.subParam)"
+      <!-- Tab content -->
+      <Transition name="tab-fade" mode="out-in">
+      <!-- Tab 1: Overview (pivoted table, DLQ cells highlighted orange, click row to edit) -->
+      <section v-if="activeTab === 'Overview'" key="overview" class="card table-card">
+        <div class="table-toolbar">
+          <div class="search-wrap">
+            <Icon name="heroicons:magnifying-glass" class="search-ic" />
+            <input v-model="search" class="search-input" placeholder="Search by AFE number, type, asset…" />
+          </div>
+          <div class="toolbar-right">
+            <span class="result-count">{{ filtered.length }} record{{ filtered.length !== 1 ? 's' : '' }}</span>
+            <button class="btn btn-ghost btn-sm" :disabled="!store.hasData" @click="exportOverviewData">
+              <Icon name="heroicons:arrow-down-tray" class="btn-ic" /> Export
+            </button>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table class="repo-table">
+            <thead>
+              <tr>
+                <th v-for="col in columns" :key="col.key" @click="toggleSort(col.key)" class="sortable-th">
+                  <span>{{ col.label }}</span>
+                  <Icon v-if="sortKey === col.key" :name="sortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, i) in paginated" :key="i" class="clickable-row" @click="openRow(row)">
+                <td v-for="col in columns" :key="col.key"
+                  :class="{
+                    'num-font': col.numeric,
+                    'cell-empty': row[col.key] == null || row[col.key] === '',
+                    'cell-flagged': store.hasDlqFlag(row.afe_number as string, col.paramKey || col.key, col.subParam)
+                  }"
+                  :title="store.getDlqTooltip(row.afe_number as string, col.paramKey || col.key, col.subParam)"
+                >
+                  <span v-if="store.hasDlqFlag(row.afe_number as string, col.paramKey || col.key, col.subParam)" class="flag-dot" />
+                  {{ row[col.key] != null && row[col.key] !== '' ? row[col.key] : '—' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="store.dlqCount > 0" class="legend">
+          <span class="flag-dot flag-dot--legend" /> <span class="legend-text">Cell flagged by DLQ — hover for details, click row to edit</span>
+        </div>
+
+        <div v-if="totalPages > 1" class="pagination">
+          <button class="pg-btn" :disabled="page <= 1" @click="page--"><Icon name="heroicons:chevron-left-20-solid" /></button>
+          <span class="pg-info num-font">{{ page }} / {{ totalPages }}</span>
+          <button class="pg-btn" :disabled="page >= totalPages" @click="page++"><Icon name="heroicons:chevron-right-20-solid" /></button>
+        </div>
+      </section>
+
+      <!-- Tab 2: Curated Data (raw long-format rows, verbatim from curated_records.csv) -->
+      <section v-else-if="activeTab === 'Curated Data'" key="curated" class="card table-card">
+        <div class="table-toolbar">
+          <div class="search-wrap">
+            <Icon name="heroicons:magnifying-glass" class="search-ic" />
+            <input v-model="search" class="search-input" placeholder="Search curated data…" />
+          </div>
+          <span class="result-count">{{ filteredSortedCurated.length }} row{{ filteredSortedCurated.length !== 1 ? 's' : '' }}</span>
+        </div>
+        <div v-if="loadingExtra" class="loading-note">Loading…</div>
+        <div v-else class="table-scroll">
+          <table class="repo-table">
+            <thead>
+              <tr>
+                <th class="sortable-th" @click="toggleCuratedSort('afe_number')">
+                  AFE Number
+                  <Icon v-if="curatedSortKey === 'afe_number'" :name="curatedSortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
+                </th>
+                <th class="sortable-th" @click="toggleCuratedSort('parameter_name')">
+                  Parameter
+                  <Icon v-if="curatedSortKey === 'parameter_name'" :name="curatedSortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
+                </th>
+                <th class="sortable-th" @click="toggleCuratedSort('sub_parameter')">
+                  Sub-Parameter
+                  <Icon v-if="curatedSortKey === 'sub_parameter'" :name="curatedSortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
+                </th>
+                <th class="sortable-th" @click="toggleCuratedSort('value')">
+                  Value
+                  <Icon v-if="curatedSortKey === 'value'" :name="curatedSortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
+                </th>
+                <th>Unit</th>
+                <th class="sortable-th" @click="toggleCuratedSort('validation_status')">
+                  Validation Status
+                  <Icon v-if="curatedSortKey === 'validation_status'" :name="curatedSortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
+                </th>
+                <th>Notes</th>
+                <th>Reference Context</th><th>Pages</th><th>JSON Path</th><th>Filename</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in filteredSortedCurated" :key="row.id">
+                <td>{{ row.afe_number }}</td>
+                <td>{{ row.parameter_name }}</td>
+                <td>{{ row.sub_parameter || '—' }}</td>
+                <td class="num-font">{{ row.value || '—' }}</td>
+                <td>{{ row.unit || '—' }}</td>
+                <td>
+                  <span class="status-pill" :class="'status-pill--' + (row.validation_status || '').toLowerCase()">
+                    {{ row.validation_status || '—' }}
+                  </span>
+                </td>
+                <td class="notes-cell">{{ row.notes || '—' }}</td>
+                <td class="notes-cell">{{ row.reference_context || '—' }}</td>
+                <td>{{ row.pages || '—' }}</td>
+                <td class="mono-cell">{{ row.json_path || '—' }}</td>
+                <td class="mono-cell">{{ row.filename || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Tab 3: DLQ (unqualified data flagged by the ETL pipeline) -->
+      <section v-else key="dlq" class="card table-card">
+        <div class="table-toolbar">
+          <div class="search-wrap">
+            <Icon name="heroicons:magnifying-glass" class="search-ic" />
+            <input v-model="search" class="search-input" placeholder="Search DLQ entries…" />
+          </div>
+          <span class="result-count">{{ unresolvedCount }} open, {{ resolvedCount }} resolved</span>
+          <label class="show-resolved-toggle">
+            <input type="checkbox" v-model="showResolved" />
+            Show resolved
+          </label>
+        </div>
+        <div class="table-scroll">
+          <table class="repo-table">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th class="sortable-th" @click="toggleDlqSort('afe_number')">
+                  AFE Number
+                  <Icon v-if="dlqSortKey === 'afe_number'" :name="dlqSortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
+                </th>
+                <th class="sortable-th" @click="toggleDlqSort('parameter_name')">
+                  Parameter
+                  <Icon v-if="dlqSortKey === 'parameter_name'" :name="dlqSortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
+                </th>
+                <th>Sub-Parameter</th>
+                <th class="sortable-th" @click="toggleDlqSort('failed_rule')">
+                  Failed Rule
+                  <Icon v-if="dlqSortKey === 'failed_rule'" :name="dlqSortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
+                </th>
+                <th>Error Type</th>
+                <th class="sortable-th" @click="toggleDlqSort('severity')">
+                  Severity
+                  <Icon v-if="dlqSortKey === 'severity'" :name="dlqSortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
+                </th>
+                <th>Action</th><th>Reference Context</th><th>Pages</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in filteredSortedDlq" :key="entry.id" class="dlq-row" :class="[entry.resolved ? 'dlq-row--resolved' : 'dlq-row--' + (entry.severity || '')]">
+                <td>
+                  <span class="resolved-pill" :class="{ 'resolved-pill--done': entry.resolved }">
+                    {{ entry.resolved ? '✓ Resolved' : 'Open' }}
+                  </span>
+                </td>
+                <td>{{ entry.afe_number }}</td>
+                <td>{{ entry.parameter_name }}</td>
+                <td>{{ entry.sub_parameter || '—' }}</td>
+                <td>{{ entry.failed_rule || '—' }}</td>
+                <td>{{ entry.error_type || '—' }}</td>
+                <td>
+                  <span class="severity-pill" :class="'severity-pill--' + (entry.severity || '')">
+                    {{ entry.severity || '—' }}
+                  </span>
+                </td>
+                <td>{{ entry.failure_action || '—' }}</td>
+                <td class="notes-cell">{{ entry.reference_context || '—' }}</td>
+                <td>{{ entry.pages || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      </Transition>
+    </template>
+
+    <!-- Row edit modal (Overview tab only) -->
+    <Teleport to="body">
+      <div v-if="selectedRow" class="modal-overlay" @click.self="closeModal">
+        <div class="modal-card">
+          <div class="modal-head">
+            <div>
+              <span class="modal-eyebrow">AFE Record</span>
+              <h2 class="modal-title">{{ selectedRow.afe_number }}</h2>
+            </div>
+            <button class="icon-btn" title="Close" @click="closeModal">
+              <Icon name="heroicons:x-mark" />
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <div v-for="field in editableFields" :key="field.key" class="modal-field">
+              <label :for="field.key" class="modal-label">{{ field.label }}</label>
+              <input
+                :id="field.key"
+                v-model="editForm[field.key]"
+                :type="field.numeric ? 'number' : 'text'"
+                class="modal-input"
+                :class="{ 'modal-input--flagged': store.hasDlqFlag(selectedRow.afe_number as string, field.paramKey || field.key, field.subParam) }"
+              />
+              <span
+                v-if="store.hasDlqFlag(selectedRow.afe_number as string, field.paramKey || field.key, field.subParam)"
+                class="modal-dlq-note"
               >
-                <span v-if="store.hasDlqFlag(row._afe as string, col.paramKey || col.key, col.subParam)" class="flag-dot" />
-                {{ row[col.key] != null && row[col.key] !== '' ? row[col.key] : '—' }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                ⚠ {{ store.getDlqTooltip(selectedRow.afe_number as string, field.paramKey || field.key, field.subParam) }}
+              </span>
+            </div>
+          </div>
 
-      <!-- Legend -->
-      <div v-if="store.dlqCount > 0" class="legend">
-        <span class="flag-dot flag-dot--legend" /> <span class="legend-text">Cell flagged by DLQ — hover for details</span>
-      </div>
+          <p v-if="saveError" class="modal-error">{{ saveError }}</p>
 
-      <!-- Pagination -->
-      <div v-if="totalPages > 1" class="pagination">
-        <button class="pg-btn" :disabled="page <= 1" @click="page--"><Icon name="heroicons:chevron-left-20-solid" /></button>
-        <span class="pg-info num-font">{{ page }} / {{ totalPages }}</span>
-        <button class="pg-btn" :disabled="page >= totalPages" @click="page++"><Icon name="heroicons:chevron-right-20-solid" /></button>
+          <div class="modal-footer">
+            <button class="btn btn-danger" :disabled="saving" @click="confirmDeleteRow">
+              <Icon name="heroicons:trash" class="btn-ic" /> Delete Record
+            </button>
+            <div class="modal-footer-right">
+              <button class="btn btn-ghost" :disabled="saving" @click="closeModal">Cancel</button>
+              <button class="btn btn-primary" :disabled="saving" @click="saveRow">
+                {{ saving ? 'Saving…' : 'Save Changes' }}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-    </section>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { useAfeStore } from '~/stores/afeStore'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { useAfeStore, type Row } from '~/stores/afeStore'
 
 useHead({ title: 'SKK Migas — Project Repository' })
 
 const store = useAfeStore()
 
-/* ── Column definitions ──────────────────────────────── */
+/* ── Tabs ─────────────────────────────────────────────── */
+const tabs = ['Overview', 'Curated Data', 'DLQ'] as const
+const activeTab = ref<typeof tabs[number]>('Overview')
+
+/* ── Curated Data tab: raw long-format rows ──────────── */
+interface CuratedRawRow {
+  id: number
+  afe_number: string
+  parameter_name: string
+  sub_parameter: string | null
+  value: string | null
+  unit: string | null
+  validation_status: string | null
+  notes: string | null
+  filename: string | null
+  json_path: string | null
+  reference_context: string | null
+  pages: string | null
+}
+const curatedRawRows = ref<CuratedRawRow[]>([])
+const loadingExtra = ref(false)
+
+async function fetchCuratedRaw() {
+  loadingExtra.value = true
+  try {
+    curatedRawRows.value = await $fetch<CuratedRawRow[]>('/api/afe/curated')
+  } catch (e) {
+    console.error('Failed to load curated raw rows:', e)
+  } finally {
+    loadingExtra.value = false
+  }
+}
+
+async function refreshAll() {
+  await Promise.all([store.fetchAll(), fetchCuratedRaw()])
+}
+
+onMounted(() => {
+  refreshAll()
+})
+
+/* ── Column definitions (keys match afe_records DB columns) ─── */
 const columns: { key: string; label: string; numeric: boolean; paramKey?: string; subParam?: string }[] = [
   { key: 'afe_number', label: 'AFE Number', numeric: false },
-  { key: 'project_type', label: 'Type', numeric: false, paramKey: 'Project_Type' },
+  { key: 'project_type', label: 'Type', numeric: false, paramKey: 'project_type' },
   { key: 'water_depth', label: 'Water Depth', numeric: true, paramKey: 'water_depth' },
   { key: 'water_depth_unit', label: 'WD Unit', numeric: false },
-  { key: 'topside_weight', label: 'Topside Wt', numeric: true, paramKey: 'topside_weight' },
-  { key: 'jacket_weight', label: 'Jacket Wt', numeric: true, paramKey: 'jacket_weight' },
+  { key: 'weight_topside', label: 'Topside Wt', numeric: true, paramKey: 'weight_topside' },
+  { key: 'weight_jacket', label: 'Jacket Wt', numeric: true, paramKey: 'weight_jacket' },
   { key: 'piling_weight', label: 'Piling Wt', numeric: true, paramKey: 'piling_weight' },
   { key: 'number_of_legs', label: 'Legs', numeric: true, paramKey: 'number_of_legs' },
   { key: 'number_of_slots', label: 'Slots', numeric: true, paramKey: 'number_of_slots' },
-  { key: 'equip_wellhead', label: 'Wellhead', numeric: false, paramKey: 'topside_equipment', subParam: 'Wellhead' },
-  { key: 'equip_processing', label: 'Processing', numeric: false, paramKey: 'topside_equipment', subParam: 'Processing' },
-  { key: 'equip_utilities', label: 'Utilities', numeric: false, paramKey: 'topside_equipment', subParam: 'Utilities' },
-  { key: 'h2s', label: 'H₂S', numeric: true, paramKey: 'impurities', subParam: 'H2S' },
-  { key: 'co2', label: 'CO₂', numeric: true, paramKey: 'impurities', subParam: 'CO2' },
-  { key: 'hg', label: 'Hg', numeric: true, paramKey: 'impurities', subParam: 'Hg' },
+  { key: 'topside_equipment_wellhead', label: 'Wellhead', numeric: false, paramKey: 'topside_equipment', subParam: 'Wellhead' },
+  { key: 'topside_equipment_processing', label: 'Processing', numeric: false, paramKey: 'topside_equipment', subParam: 'Processing' },
+  { key: 'topside_equipment_utilities', label: 'Utilities', numeric: false, paramKey: 'topside_equipment', subParam: 'Utilities' },
+  { key: 'impurities_h2s', label: 'H₂S', numeric: true, paramKey: 'impurities', subParam: 'H2S' },
+  { key: 'impurities_co2', label: 'CO₂', numeric: true, paramKey: 'impurities', subParam: 'CO2' },
+  { key: 'impurities_hg', label: 'Hg', numeric: true, paramKey: 'impurities', subParam: 'Hg' },
 ]
 
-/* ── Local UI state ──────────────────────────────────── */
+const editableFields = columns.filter(c => c.key !== 'afe_number')
+
+/* ── DLQ tab: resolved filter ────────────────────────── */
+const showResolved = ref(true)
+const resolvedCount = computed(() => store.dlqEntries.filter(d => d.resolved).length)
+const unresolvedCount = computed(() => store.dlqEntries.filter(d => !d.resolved).length)
+const visibleDlqEntries = computed(() =>
+  showResolved.value ? store.dlqEntries : store.dlqEntries.filter(d => !d.resolved)
+)
+
+/* ── Shared search (applies across Overview, Curated Data, and DLQ) ── */
 const search = ref('')
+
+/* ── Curated Data tab: search + sort ─────────────────── */
+const curatedSortKey = ref('afe_number')
+const curatedSortAsc = ref(true)
+
+function toggleCuratedSort(key: string) {
+  if (curatedSortKey.value === key) curatedSortAsc.value = !curatedSortAsc.value
+  else { curatedSortKey.value = key; curatedSortAsc.value = true }
+}
+
+const filteredSortedCurated = computed(() => {
+  const q = search.value.toLowerCase().trim()
+  let list = curatedRawRows.value
+  if (q) {
+    list = list.filter(row =>
+      [row.afe_number, row.parameter_name, row.sub_parameter, row.value, row.unit,
+       row.validation_status, row.notes, row.filename]
+        .some(v => String(v ?? '').toLowerCase().includes(q))
+    )
+  }
+  const key = curatedSortKey.value
+  return [...list].sort((a: any, b: any) => {
+    const va = a[key], vb = b[key]
+    if (va == null && vb == null) return 0
+    if (va == null) return 1; if (vb == null) return -1
+    const cmp = String(va).localeCompare(String(vb), undefined, { numeric: true })
+    return curatedSortAsc.value ? cmp : -cmp
+  })
+})
+
+/* ── DLQ tab: search + sort ──────────────────────────── */
+const dlqSortKey = ref('afe_number')
+const dlqSortAsc = ref(true)
+
+function toggleDlqSort(key: string) {
+  if (dlqSortKey.value === key) dlqSortAsc.value = !dlqSortAsc.value
+  else { dlqSortKey.value = key; dlqSortAsc.value = true }
+}
+
+const filteredSortedDlq = computed(() => {
+  const q = search.value.toLowerCase().trim()
+  let list = visibleDlqEntries.value
+  if (q) {
+    list = list.filter(entry =>
+      [entry.afe_number, entry.parameter_name, entry.sub_parameter, entry.failed_rule,
+       entry.error_type, entry.severity, entry.reference_context]
+        .some(v => String(v ?? '').toLowerCase().includes(q))
+    )
+  }
+  const key = dlqSortKey.value
+  return [...list].sort((a: any, b: any) => {
+    const va = a[key], vb = b[key]
+    if (va == null && vb == null) return 0
+    if (va == null) return 1; if (vb == null) return -1
+    const cmp = String(va).localeCompare(String(vb), undefined, { numeric: true })
+    return dlqSortAsc.value ? cmp : -cmp
+  })
+})
+
+/* ── Export Overview Data ────────────────────────────── */
+function toCsv(rows: Row[], cols: { key: string; label: string }[]): string {
+  const header = cols.map(c => `"${c.label}"`).join(',')
+  const body = rows.map(r =>
+    cols.map(c => `"${String(r[c.key] ?? '').replace(/"/g, '""')}"`).join(',')
+  ).join('\n')
+  return header + '\n' + body
+}
+
+function downloadCsv(content: string, filename: string) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function exportOverviewData() {
+  const openCount = unresolvedCount.value
+  let message: string
+  if (openCount > 0) {
+    message = `${openCount} DLQ flag${openCount !== 1 ? 's are' : ' is'} still open. Export the Overview data anyway?`
+  } else {
+    message = 'Data has no open DLQ flags. Export the Overview data?'
+  }
+
+  if (!confirm(message)) return
+
+  const csv = toCsv(store.rows, columns)
+  const timestamp = new Date().toISOString().slice(0, 10)
+  downloadCsv(csv, `overview_data_${timestamp}.csv`)
+}
 const sortKey = ref('afe_number')
 const sortAsc = ref(true)
 const page = ref(1)
 const perPage = 25
-const curatedInput = ref<HTMLInputElement | null>(null)
-const dlqInput = ref<HTMLInputElement | null>(null)
 
-/* ── Derived ─────────────────────────────────────────── */
 const filtered = computed(() => {
   const q = search.value.toLowerCase().trim()
   let list = store.rows
@@ -144,42 +491,63 @@ const paginated = computed(() => filtered.value.slice((page.value - 1) * perPage
 
 watch(search, () => { page.value = 1 })
 
-/* ── Sort ────────────────────────────────────────────── */
 function toggleSort(key: string) {
   if (sortKey.value === key) sortAsc.value = !sortAsc.value
   else { sortKey.value = key; sortAsc.value = true }
 }
 
-/* ── CSV import (reads file, passes to store) ────────── */
-function handleImport(e: Event, type: 'curated' | 'dlq') {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-  const reader = new FileReader()
-  reader.onload = () => {
-    const text = (reader.result as string).replace(/\r/g, '')
-    const lines = text.trim().split('\n')
-    if (lines.length < 2) return
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
+/* ── Row edit modal ──────────────────────────────────── */
+const selectedRow = ref<Row | null>(null)
+const editForm = reactive<Record<string, string | number | null>>({})
+const saving = ref(false)
+const saveError = ref<string | null>(null)
 
-    try {
-      if (type === 'curated') store.importCurated(headers, lines.slice(1))
-      else store.importDlq(headers, lines.slice(1))
-    } catch (err: any) {
-      alert(err.message || 'Failed to parse CSV.')
-    }
-    page.value = 1
+function openRow(row: Row) {
+  selectedRow.value = row
+  saveError.value = null
+  for (const field of editableFields) {
+    editForm[field.key] = row[field.key]
   }
-  reader.readAsText(file)
-  input.value = ''
 }
 
-/* ── Clear with confirmation ─────────────────────────── */
-function confirmClear() {
-  if (confirm('Clear all repository data? This removes the imported curated and DLQ data from this session.')) {
-    store.clearAll()
-    search.value = ''
-    page.value = 1
+function closeModal() {
+  selectedRow.value = null
+}
+
+async function saveRow() {
+  if (!selectedRow.value) return
+  saving.value = true
+  saveError.value = null
+  try {
+    const changes: Record<string, string | number | null> = {}
+    for (const field of editableFields) {
+      if (editForm[field.key] !== selectedRow.value[field.key]) {
+        changes[field.key] = editForm[field.key] === '' ? null : editForm[field.key]
+      }
+    }
+    if (Object.keys(changes).length > 0) {
+      await store.updateRecord(selectedRow.value.afe_number as string, changes)
+    }
+    closeModal()
+  } catch (err: any) {
+    saveError.value = err?.data?.statusMessage ?? err.message ?? 'Failed to save changes.'
+  } finally {
+    saving.value = false
+  }
+}
+
+async function confirmDeleteRow() {
+  if (!selectedRow.value) return
+  if (!confirm(`Delete record ${selectedRow.value.afe_number}? This cannot be undone.`)) return
+  saving.value = true
+  saveError.value = null
+  try {
+    await store.deleteRecord(selectedRow.value.afe_number as string)
+    closeModal()
+  } catch (err: any) {
+    saveError.value = err?.data?.statusMessage ?? err.message ?? 'Failed to delete record.'
+  } finally {
+    saving.value = false
   }
 }
 
@@ -212,41 +580,56 @@ function exportCsv() {
 </script>
 
 <style scoped>
-.page { width: 1064px; max-width: 1064px; padding: 96px 32px 80px; box-sizing: border-box; }
+.page { width: 1180px; max-width: 1180px; padding: 96px 32px 80px; box-sizing: border-box; }
 .page-head { margin-bottom: 20px; }
 .page-title { font-family: 'Poppins'; font-size: 30px; font-weight: 800; letter-spacing: -0.6px; color: #0f172a; margin: 0; }
 
 .btn { display: inline-flex; align-items: center; gap: 6px; border: 2px solid #ef4444; border-radius: 99px; padding: 8px 16px; font-family: 'Poppins', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .2s ease; background: #fff; color: #ef4444; white-space: nowrap; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn-ic { width: 14px; height: 14px; }
+.btn-ic.spinning { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .btn-ghost { background: #fff; color: #ef4444; border: 2px solid #ef4444; }
 .btn-ghost:not(:disabled):hover { background: #fff5f5; }
 .btn-danger { background: #fef2f2; color: #b91c1c; border: 2px solid #fecaca; }
 .btn-danger:not(:disabled):hover { background: #fee2e2; }
+.btn-primary { background: #ef4444; color: #fff; border: 2px solid #ef4444; }
+.btn-primary:not(:disabled):hover { background: #dc2626; }
 
 /* Warning banners */
 .warn-banner { display: flex; align-items: center; gap: 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; padding: 14px 18px; margin-bottom: 18px; font-size: 13.5px; color: #92400e; line-height: 1.5; }
-.warn-banner--soft { background: #f8fafc; border-color: #e2e8f0; color: #64748b; }
 .warn-ic { width: 20px; height: 20px; flex-shrink: 0; }
 
-/* Scorecard */
-.scorecard-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-.sc-card { background: #fff; border-radius: 20px; padding: 20px 22px; box-shadow: 0 4px 16px rgba(0,0,0,.04); }
-.warn-card { background: #fffbeb; }
-.sc-label { font-family: 'Inter'; font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: #94a3b8; display: block; }
-.sc-val { font-size: 28px; font-weight: 800; color: #0f172a; margin-top: 6px; display: block; letter-spacing: -0.5px; }
-.num-font { font-family: 'Inter', monospace; }
+/* Tab bar */
+.tab-bar-row { display: flex; align-items: center; margin-bottom: 20px; }
+.tab-buttons { display: flex; gap: 8px; }
+.tab-btn {
+  background: #f1f5f9; border: none; border-radius: 99px; padding: 9px 20px;
+  font-family: 'Poppins'; font-size: 13.5px; font-weight: 600; color: #475569;
+  cursor: pointer; outline: none; transition: all .2s ease; white-space: nowrap;
+}
+.tab-btn:hover { background: #e2e8f0; color: #334155; }
+.tab-btn.active-tab { background: var(--platform2, #ef4444); color: #000000; box-shadow: 0 2px 8px rgba(239,68,68,.25); }
+
+.tab-fade-enter-active, .tab-fade-leave-active { transition: opacity .18s ease, transform .18s cubic-bezier(0.4,0,0.2,1); }
+.tab-fade-enter-from { opacity: 0; transform: translateY(8px); }
+.tab-fade-leave-to { opacity: 0; transform: translateY(-8px); }
 
 /* Table card */
 .card { position: relative; background: #fff; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.03); padding: 28px; margin-bottom: 24px; overflow: hidden; }
 
-.table-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.table-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 12px; flex-wrap: wrap; }
+.toolbar-right { display: flex; align-items: center; gap: 14px; }
+.btn-sm { padding: 6px 12px; font-size: 11.5px; }
 .search-wrap { position: relative; flex: 1; max-width: 400px; }
 .search-ic { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: #94a3b8; }
 .search-input { width: 100%; padding: 10px 14px 10px 38px; border: 1px solid #e2e8f0; border-radius: 12px; font-family: 'Inter'; font-size: 13.5px; color: #1e293b; background: #fcfcfd; outline: none; transition: border .2s; }
 .search-input:focus { border-color: #fca5a5; }
 .search-input::placeholder { color: #cbd5e1; }
 .result-count { font-family: 'Inter'; font-size: 12px; font-weight: 600; color: #94a3b8; }
+.show-resolved-toggle { display: inline-flex; align-items: center; gap: 6px; font-family: 'Inter'; font-size: 12.5px; font-weight: 600; color: #64748b; cursor: pointer; }
+.show-resolved-toggle input { accent-color: #ef4444; width: 14px; height: 14px; cursor: pointer; }
+.loading-note { font-family: 'Inter'; font-size: 13px; color: #94a3b8; padding: 20px 0; text-align: center; }
 
 .table-scroll { overflow-x: auto; margin: 0 -28px; padding: 0 28px; }
 .repo-table { width: auto; min-width: 100%; border-collapse: collapse; table-layout: auto; }
@@ -255,12 +638,39 @@ function exportCsv() {
 .sortable-th:hover { color: #ef4444; }
 .sort-ic { width: 14px; height: 14px; vertical-align: middle; margin-left: 2px; }
 .repo-table td { padding: 9px 6px; border-bottom: 1px solid #f8fafc; font-size: 13px; color: #1e293b; white-space: nowrap; position: relative; width: 1%; }
-.repo-table tbody tr:hover { background: #fffaf9; }
+.repo-table td.notes-cell { white-space: normal; max-width: 280px; min-width: 180px; }
+.repo-table td.mono-cell { font-family: 'Inter', monospace; font-size: 11.5px; color: #64748b; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background: #fffaf9; }
 .cell-empty { color: #cbd5e1; font-style: italic; }
-.cell-flagged { background: #fff7ed; }
-.flag-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; margin-right: 5px; vertical-align: middle; }
+
+/* Orange DLQ highlight — stronger than before: solid tint + left accent bar */
+.cell-flagged {
+  background: #ffedd5;
+  box-shadow: inset 3px 0 0 0 #f97316;
+}
+.flag-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #f97316; margin-right: 5px; vertical-align: middle; }
 .flag-dot--legend { margin-right: 6px; }
 .legend { display: flex; align-items: center; margin-top: 16px; font-family: 'Inter'; font-size: 12px; color: #94a3b8; }
+
+/* Curated Data tab: validation_status pill */
+.status-pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; letter-spacing: .3px; }
+.status-pill--pass { background: #ecfdf5; color: #047857; }
+.status-pill--fail { background: #fef2f2; color: #b91c1c; }
+.status-pill--warn, .status-pill--warning { background: #fffbeb; color: #b45309; }
+
+/* DLQ tab: severity pill + row tint */
+.severity-pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; letter-spacing: .3px; text-transform: capitalize; }
+.severity-pill--error { background: #fef2f2; color: #b91c1c; }
+.severity-pill--info { background: #f0f9ff; color: #0369a1; }
+.severity-pill--warning { background: #fffbeb; color: #b45309; }
+.dlq-row--error td:first-child + td { box-shadow: inset 3px 0 0 0 #ef4444; }
+.dlq-row--info td:first-child + td { box-shadow: inset 3px 0 0 0 #38bdf8; }
+.dlq-row--warning td:first-child + td { box-shadow: inset 3px 0 0 0 #f59e0b; }
+.dlq-row--resolved { opacity: .5; }
+
+.resolved-pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; letter-spacing: .3px; background: #fef2f2; color: #b91c1c; white-space: nowrap; }
+.resolved-pill--done { background: #ecfdf5; color: #047857; }
 
 .pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 20px; }
 .pg-btn { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid #e2e8f0; background: #fff; border-radius: 10px; cursor: pointer; color: #64748b; transition: all .15s; }
@@ -269,5 +679,36 @@ function exportCsv() {
 .pg-btn :deep(svg) { width: 16px; height: 16px; }
 .pg-info { font-size: 13px; font-weight: 600; color: #64748b; }
 
-@media (max-width: 900px) { .page { width: 100%; } .scorecard-row { grid-template-columns: repeat(2, 1fr); } }
+/* Row edit modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(15, 23, 42, .45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 24px;
+}
+.modal-card {
+  background: #fff; border-radius: 20px; width: 560px; max-width: 100%;
+  max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+.modal-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 24px 24px 16px; }
+.modal-eyebrow { font-family: 'Inter'; font-size: 10.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #94a3b8; }
+.modal-title { font-family: 'Poppins'; font-size: 20px; font-weight: 800; color: #0f172a; margin: 2px 0 0; }
+.icon-btn { display: grid; place-items: center; width: 32px; height: 32px; border: none; background: #f8fafc; border-radius: 10px; cursor: pointer; color: #64748b; }
+.icon-btn:hover { background: #f1f5f9; color: #1e293b; }
+.icon-btn :deep(svg) { width: 17px; height: 17px; }
+
+.modal-body { padding: 4px 24px 8px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+.modal-field { display: flex; flex-direction: column; gap: 5px; }
+.modal-label { font-family: 'Inter'; font-size: 11px; font-weight: 600; color: #64748b; }
+.modal-input { border: 1px solid #e2e8f0; border-radius: 10px; padding: 9px 12px; font-family: 'Inter'; font-size: 13.5px; color: #1e293b; outline: none; transition: border .15s; }
+.modal-input:focus { border-color: #ef4444; }
+.modal-input--flagged { border-color: #f97316; background: #ffedd5; }
+.modal-dlq-note { font-size: 11px; color: #b45309; line-height: 1.4; }
+
+.modal-error { margin: 12px 24px 0; font-size: 13px; color: #b91c1c; }
+
+.modal-footer { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px 24px; margin-top: 8px; }
+.modal-footer-right { display: flex; gap: 10px; }
+
+@media (max-width: 1200px) { .page { width: 100%; } }
 </style>

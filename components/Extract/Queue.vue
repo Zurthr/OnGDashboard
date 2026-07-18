@@ -67,6 +67,11 @@
           <Icon name="heroicons:exclamation-triangle" class="err-ic" /> {{ f.error }}
         </p>
 
+        <p v-if="f.status === 'done' && store.getDuplicateWarning(f)" class="warn-msg">
+          <Icon name="heroicons:exclamation-triangle" class="warn-ic" />
+          {{ store.getDuplicateWarning(f) }}
+        </p>
+
         <div v-if="f.status === 'done' && (f.result || f.raw_text)" class="result">
           <ExtractExtractionResult v-if="f.result" :data="f.result" />
 
@@ -88,12 +93,19 @@
       </li>
     </ul>
 
-    <div v-if="store.doneCount > 1" class="footer-actions">
+    <div v-if="store.doneCount > 0" class="footer-actions">
       <button class="btn btn-ghost" @click="store.downloadAll()">
         <Icon name="heroicons:archive-box-arrow-down" class="btn-ic" />
         Download all JSON
       </button>
+      <button class="btn btn-ghost" @click="store.importToRepository()" :disabled="store.importing">
+        <Icon name="heroicons:cloud-arrow-up" />
+        {{ store.importing ? 'Importing...' : 'Import to Repository' }}
+      </button>
     </div>
+    <p v-if="store.importError" class="err-msg" style="justify-content: flex-end; margin-top: 8px;">
+      <Icon name="heroicons:exclamation-triangle" class="err-ic" /> {{ store.importError }}
+    </p>
   </section>
 </template>
 
@@ -173,6 +185,8 @@ const store = useExtractStore()
 .progress-stage { font-family: 'Inter'; font-size: 11.5px; color: #94a3b8; margin-top: 6px; }
 .err-msg { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #b91c1c; margin-top: 12px; }
 .err-ic { width: 15px; height: 15px; }
+.warn-msg { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #b45309; margin-top: 8px; }
+.warn-ic { width: 15px; height: 15px; }
 
 .result { margin-top: 16px; padding-top: 16px; border-top: 1px solid #f1f5f9; }
 
