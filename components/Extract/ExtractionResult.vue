@@ -46,8 +46,8 @@ const sections = computed(() => {
       title: 'Structural parameters',
       rows: [
         { label: 'Water Depth', field: x.Water_Depth },
-        { label: 'Topside Weight', field: x.Weight_Topside },
-        { label: 'Jacket Weight', field: x.Weight_Jacket },
+        { label: 'Topside Weight', field: x.Topside_Weight },
+        { label: 'Jacket Weight', field: x.Jacket_Weight },
         { label: 'Piling Weight', field: x.Piling_Weight },
         { label: 'Number of Legs', field: x.Number_of_Legs },
         { label: 'Number of Slots', field: x.Number_of_Slots },

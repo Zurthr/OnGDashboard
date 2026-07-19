@@ -20,6 +20,9 @@ export interface DlqEntry {
   afe_number: string
   parameter_name: string
   sub_parameter: string | null
+  unit: string | null
+  notes: string | null
+  validation_status: string | null
   raw_value: string | null
   normalized_value: string | null
   failed_rule: string | null

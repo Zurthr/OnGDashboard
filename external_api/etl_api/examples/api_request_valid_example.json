@@ -1,0 +1,61 @@
+{
+  "source_filename": "AFE-001.json",
+  "payload": {
+    "AFE_Extraction": {
+      "AFE_Number": {
+        "value": "18-21A-218-OO",
+        "reference_context": "AFE No. 18-21A-218-OO Meliwis WHP",
+        "pages": "2, 5, 6"
+      },
+      "Project_Type": {
+        "value": "Platform",
+        "reference_context": "Mini Jacket - Crossings EJGP",
+        "pages": "2"
+      },
+      "Water_Depth": {
+        "value": "120 m",
+        "reference_context": "Found on page 2",
+        "pages": "2"
+      },
+      "Weight_Topside": {
+        "value": "1500 MT",
+        "reference_context": "Deck sekitar 97.6MT",
+        "pages": "2"
+      },
+      "Weight_Jacket": {
+        "value": "2000 MT",
+        "reference_context": "Jacket Tiga Kaki",
+        "pages": "2"
+      },
+      "Piling_Weight": {
+        "value": "500 MT",
+        "reference_context": "Piles",
+        "pages": "2"
+      },
+      "Number_of_Legs": {
+        "value": "4",
+        "reference_context": "Jacket Tiga Kaki",
+        "pages": "2"
+      },
+      "Number_of_Slots": {
+        "value": "12",
+        "reference_context": "WHP memiliki 2 Wells",
+        "pages": "2"
+      },
+      "Topside_Equipment": {
+        "Wellhead": {
+          "value": "Unit WHP dengan 2 Wells conductor slot",
+          "reference_context": "Satu unit WHP",
+          "pages": "2"
+        }
+      },
+      "Impurities": {
+        "H2S": {
+          "value": "10 ppm",
+          "reference_context": "H2S concentration is 10 ppm",
+          "pages": "9"
+        }
+      }
+    }
+  }
+}

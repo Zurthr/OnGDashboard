@@ -15,7 +15,10 @@ import { useExtractStore } from '~/stores/extractStore'
 useHead({ title: 'SKK Migas — Extract AFE Data' })
 
 const store = useExtractStore()
-onMounted(() => store.restoreQueue())
+onMounted(() => {
+  store.restoreQueue()
+  store.hydrateFromDatabase()
+})
 </script>
 
 <style scoped>
@@ -35,7 +38,7 @@ onMounted(() => store.restoreQueue())
   margin: 0;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .page { width: 100%; }
 }
 </style>

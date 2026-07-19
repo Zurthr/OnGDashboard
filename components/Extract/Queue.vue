@@ -27,6 +27,9 @@
           <span class="status" :class="'status--' + f.status">
             <span class="dot"></span>{{ store.statusLabel(f.status) }}
           </span>
+          <span v-if="f.imported" class="imported-badge" title="Already imported to the repository">
+            <Icon name="heroicons:check-circle" /> Imported
+          </span>
 
           <div class="row-actions">
             <button
@@ -36,6 +39,17 @@
               @click="store.downloadOne(f)"
             >
               <Icon name="heroicons:arrow-down-tray" />
+            </button>
+
+            <button
+              v-if="f.status === 'done'"
+              class="icon-btn"
+              :class="{ spinning: store.importingFileId === f.id, imported: f.imported }"
+              :title="store.importingFileId === f.id ? 'Importing…' : (f.imported ? 'Imported — click to re-import' : 'Import to Repository')"
+              :disabled="store.importing"
+              @click="store.importOne(f)"
+            >
+              <Icon :name="f.imported && store.importingFileId !== f.id ? 'heroicons:check-circle' : 'heroicons:cloud-arrow-up'" />
             </button>
 
             <button
@@ -93,14 +107,14 @@
       </li>
     </ul>
 
-    <div v-if="store.doneCount > 0" class="footer-actions">
+    <div v-if="store.doneCount > 1" class="footer-actions">
       <button class="btn btn-ghost" @click="store.downloadAll()">
         <Icon name="heroicons:archive-box-arrow-down" class="btn-ic" />
         Download all JSON
       </button>
       <button class="btn btn-ghost" @click="store.importToRepository()" :disabled="store.importing">
         <Icon name="heroicons:cloud-arrow-up" />
-        {{ store.importing ? 'Importing...' : 'Import to Repository' }}
+        {{ store.importing && !store.importingFileId ? 'Importing...' : 'Import All' }}
       </button>
     </div>
     <p v-if="store.importError" class="err-msg" style="justify-content: flex-end; margin-top: 8px;">
@@ -144,7 +158,7 @@ const store = useExtractStore()
 .btn-ic { width: 16px; height: 16px; }
 .btn-primary { background: var(--color-primary, #10b981); color: #fff; }
 .btn-primary:not(:disabled):hover { background: var(--color-primary-hover, #059669); transform: translateY(-1px); }
-.btn-ghost { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+.btn-ghost { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; margin-left: 5px;}
 .btn-ghost:not(:disabled):hover { background: #f1f5f9; }
 
 .file-list { list-style: none; display: flex; flex-direction: column; gap: 14px; }
@@ -170,6 +184,13 @@ const store = useExtractStore()
 .status--error { background: #fef2f2; color: #b91c1c; }
 .status--error .dot { background: #ef4444; }
 
+.imported-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: 'Inter'; font-size: 11.5px; font-weight: 600;
+  color: #047857; white-space: nowrap;
+}
+.imported-badge :deep(svg) { width: 14px; height: 14px; }
+
 .row-actions { display: flex; gap: 4px; }
 .icon-btn {
   display: grid; place-items: center; width: 30px; height: 30px;
@@ -179,6 +200,9 @@ const store = useExtractStore()
 .icon-btn:hover:not(:disabled) { background: #f1f5f9; color: #475569; }
 .icon-btn :deep(svg) { width: 17px; height: 17px; }
 .icon-btn:disabled { opacity: .4; cursor: not-allowed; }
+.icon-btn.spinning :deep(svg) { animation: spin 1s linear infinite; }
+.icon-btn.imported:not(.spinning) { color: #10b981; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 .progress { height: 6px; background: #f1f5f9; border-radius: 99px; margin-top: 14px; overflow: hidden; }
 .progress-bar { height: 100%; background: var(--platform); border-radius: 99px; transition: width .4s ease; }

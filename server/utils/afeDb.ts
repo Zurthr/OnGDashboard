@@ -23,8 +23,8 @@ export function useAfeDb() {
       project_type                  TEXT,
       water_depth                   REAL,
       water_depth_unit              TEXT,
-      weight_topside                REAL,
-      weight_jacket                 REAL,
+      topside_weight                REAL,
+      jacket_weight                 REAL,
       piling_weight                 REAL,
       number_of_legs                INTEGER,
       number_of_slots               INTEGER,
@@ -40,9 +40,9 @@ export function useAfeDb() {
 
     -- One row per (parameter, sub_parameter) as originally imported from
     -- curated_records.csv, in long format — preserved verbatim (including
-    -- validation_status / notes) for the "Curated Data" tab. Separate from
+    -- validation_status / notes) for the "Raw Data" tab. Separate from
     -- afe_records, which holds the pivoted, editable, one-row-per-AFE view.
-    CREATE TABLE IF NOT EXISTS curated_raw_rows (
+    CREATE TABLE IF NOT EXISTS raw_data (
       id                 INTEGER PRIMARY KEY AUTOINCREMENT,
       afe_number         TEXT NOT NULL,
       parameter_name     TEXT NOT NULL,
@@ -59,11 +59,14 @@ export function useAfeDb() {
       FOREIGN KEY (afe_number) REFERENCES afe_records(afe_number) ON DELETE CASCADE
     );
 
-    CREATE TABLE IF NOT EXISTS dlq_entries (
+    CREATE TABLE IF NOT EXISTS issue_data (
       id                  INTEGER PRIMARY KEY AUTOINCREMENT,
       afe_number          TEXT NOT NULL,
       parameter_name      TEXT NOT NULL,
       sub_parameter       TEXT,
+      unit                TEXT,
+      notes               TEXT,
+      validation_status   TEXT DEFAULT 'FAIL',
       raw_value           TEXT,
       normalized_value    TEXT,
       failed_rule         TEXT,
@@ -80,38 +83,26 @@ export function useAfeDb() {
       FOREIGN KEY (afe_number) REFERENCES afe_records(afe_number) ON DELETE CASCADE
     );
 
-    CREATE INDEX IF NOT EXISTS idx_dlq_afe_number ON dlq_entries(afe_number);
-    CREATE INDEX IF NOT EXISTS idx_curated_raw_afe_number ON curated_raw_rows(afe_number);
+    -- Preserves every successfully-extracted document's raw payload (what the
+    -- AI extraction produced, before the ETL API ever sees it), regardless of
+    -- what happens downstream — even if AFE_Number extraction fails entirely,
+    -- the ETL call fails, or the record ends up entirely in issue_data. Keyed
+    -- by source_filename (not afe_number): the whole point is that afe_number
+    -- can be missing or malformed, so it can't be a reliable key here.
+    -- UNIQUE on source_filename: re-importing the same file replaces its row
+    -- rather than accumulating duplicates.
+    CREATE TABLE IF NOT EXISTS extraction_payloads (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_filename   TEXT NOT NULL UNIQUE,
+      afe_number        TEXT,
+      payload_json      TEXT NOT NULL,
+      imported_at       TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_issue_data_afe_number ON issue_data(afe_number);
+    CREATE INDEX IF NOT EXISTS idx_raw_data_afe_number ON raw_data(afe_number);
+    CREATE INDEX IF NOT EXISTS idx_extraction_payloads_afe_number ON extraction_payloads(afe_number);
   `)
-
-  // Lightweight migrations: add any columns/tables that didn't exist in an
-  // older version of this database, so existing data doesn't need to be
-  // deleted every time the schema grows.
-  const afeColumns = _afeDb.prepare(`PRAGMA table_info(afe_records)`).all() as Array<{ name: string }>
-  if (!afeColumns.some(c => c.name === 'water_depth_unit')) {
-    _afeDb.exec(`ALTER TABLE afe_records ADD COLUMN water_depth_unit TEXT`)
-  }
-
-  const dlqColumns = _afeDb.prepare(`PRAGMA table_info(dlq_entries)`).all() as Array<{ name: string }>
-  const requiredDlqColumns = [
-    'raw_value', 'normalized_value', 'failure_action',
-    'reference_context', 'pages', 'json_path', 'source_file',
-    'resolved', 'resolved_at',
-  ]
-  for (const col of requiredDlqColumns) {
-    if (!dlqColumns.some(c => c.name === col)) {
-      const type = col === 'resolved' ? 'INTEGER DEFAULT 0' : 'TEXT'
-      _afeDb.exec(`ALTER TABLE dlq_entries ADD COLUMN ${col} ${type}`)
-    }
-  }
-
-  const curatedRawColumns = _afeDb.prepare(`PRAGMA table_info(curated_raw_rows)`).all() as Array<{ name: string }>
-  const requiredCuratedRawColumns = ['filename', 'json_path', 'reference_context', 'pages']
-  for (const col of requiredCuratedRawColumns) {
-    if (!curatedRawColumns.some(c => c.name === col)) {
-      _afeDb.exec(`ALTER TABLE curated_raw_rows ADD COLUMN ${col} TEXT`)
-    }
-  }
 
   return _afeDb
 }

@@ -25,3 +25,5 @@ logs
 
 # Local env
 .env
+# storage
+server/database

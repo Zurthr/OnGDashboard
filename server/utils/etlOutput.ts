@@ -2,14 +2,14 @@ import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
- * Reads integration_output.json — the real contract from the Validation-Aware
- * ETL pipeline (see INTEGRATION_OUTPUT_CONTRACT.md). This is a stand-in for
- * calling the ETL as a live API: once that endpoint exists, this file's
- * getAllEtlData() can be replaced with an $fetch() call that returns the same
- * shape, and nothing downstream (import.post.ts, upsertAfe.ts) needs to change.
+ * Shapes ETL output — curated_records / dlq_records, whether from a batch
+ * integration_output.json file or the live ETL API (see etlApiClient.ts) —
+ * into the flat structures the database layer (upsertAfe.ts) expects. See
+ * docs: INTEGRATION_OUTPUT_CONTRACT.md / REST_API_REFERENCE.md in the ETL
+ * project for the exact contract this matches.
  */
 
-interface RawCuratedRecord {
+export interface RawCuratedRecord {
   afe_number: string
   project_type: string | null
   parameter_name: string
@@ -24,7 +24,7 @@ interface RawCuratedRecord {
   pages: string[] | string | null
 }
 
-interface RawDlqRecord {
+export interface RawDlqRecord {
   afe_number: string
   project_type: string | null
   parameter_name: string
@@ -60,8 +60,8 @@ function toColumnName(parameterName: string, subParameter: string): string | nul
   const direct: Record<string, string> = {
     project_type: 'project_type',
     water_depth: 'water_depth',
-    topside_weight: 'weight_topside',   // ETL's naming is reversed vs. the schema's
-    jacket_weight: 'weight_jacket',     // same here
+    topside_weight: 'topside_weight',
+    jacket_weight: 'jacket_weight',
     piling_weight: 'piling_weight',
     number_of_legs: 'number_of_legs',
     number_of_slots: 'number_of_slots',
@@ -96,25 +96,22 @@ export interface BulkCuratedData {
 }
 
 /**
- * Reads integration_output.json from the project root and returns three things:
+ * Takes raw curated_records/dlq_records (the shape returned by both
+ * integration_output.json and the live ETL API's POST /api/v1/etl/process)
+ * and reshapes them into three things:
  * - afe_records: pivoted, one flat row per AFE (for the editable Overview table)
- * - curated_raw_rows: every curated record verbatim (for the Curated Data tab)
- * - dlq_entries_by_afe: every DLQ record, grouped by AFE (for cell flagging + the DLQ tab)
+ * - curated_raw_rows: every curated record verbatim (for the Raw Data tab)
+ * - dlq_entries_by_afe: every DLQ record, grouped by AFE (for cell flagging + the Issue tab)
  *
- * Imports EVERYTHING in the file — does not filter by any single AFE number.
+ * Pure function, no I/O — shared by getAllEtlData() (dev/offline file mode)
+ * and fetchEtlDataFromApi() (live API mode), so this reshaping logic only
+ * lives in one place regardless of where the raw records came from.
  */
-export function getAllEtlData(): BulkCuratedData {
-  const path = join(process.cwd(), 'integration_output.json')
-  if (!existsSync(path)) {
-    return { afe_records: [], curated_raw_rows: [], dlq_entries_by_afe: {} }
-  }
-
-  const data: EtlOutput = JSON.parse(readFileSync(path, 'utf-8'))
-
+export function shapeEtlRecords(curatedRecords: RawCuratedRecord[], dlqRecords: RawDlqRecord[]): BulkCuratedData {
   const recordsByAfe = new Map<string, AfeRecordInput>()
   const rawRows: CuratedRawRowInput[] = []
 
-  for (const row of data.curated_records ?? []) {
+  for (const row of curatedRecords ?? []) {
     if (!row.afe_number) continue
 
     if (!recordsByAfe.has(row.afe_number)) {
@@ -123,7 +120,7 @@ export function getAllEtlData(): BulkCuratedData {
     const record = recordsByAfe.get(row.afe_number)!
     if (row.project_type && !record.project_type) record.project_type = row.project_type
 
-    // Preserve this row verbatim for the Curated Data tab
+    // Preserve this row verbatim for the Raw Data tab
     rawRows.push({
       afe_number: row.afe_number,
       parameter_name: row.parameter_name,
@@ -153,7 +150,7 @@ export function getAllEtlData(): BulkCuratedData {
   }
 
   const dlqByAfe: Record<string, DlqEntryInput[]> = {}
-  for (const row of data.dlq_records ?? []) {
+  for (const row of dlqRecords ?? []) {
     if (!row.afe_number) continue
 
     if (!dlqByAfe[row.afe_number]) dlqByAfe[row.afe_number] = []
@@ -178,4 +175,21 @@ export function getAllEtlData(): BulkCuratedData {
     curated_raw_rows: rawRows,
     dlq_entries_by_afe: dlqByAfe,
   }
+}
+
+/**
+ * Dev/offline fallback: reads integration_output.json from the project root
+ * (a batch export from the ETL, covering many documents at once) and shapes
+ * it the same way as the live API path below. Useful for testing without
+ * the FastAPI server running, but the real import flow now uses
+ * fetchEtlDataFromApi() instead — see import.post.ts.
+ */
+export function getAllEtlData(): BulkCuratedData {
+  const path = join(process.cwd(), 'integration_output.json')
+  if (!existsSync(path)) {
+    return { afe_records: [], curated_raw_rows: [], dlq_entries_by_afe: {} }
+  }
+
+  const data: EtlOutput = JSON.parse(readFileSync(path, 'utf-8'))
+  return shapeEtlRecords(data.curated_records, data.dlq_records)
 }

@@ -33,35 +33,82 @@
 
       <!-- Tab content (no page scroll — each tab is a self-contained view) -->
       <Transition name="tab-fade" mode="out-in">
-        <!-- Tab 1: Basic -->
-        <div v-if="activeTab === 'Basic'" key="basic" class="tab-panel">
+        <!-- Tab 1: Data Statistics -->
+        <div v-if="activeTab === 'Data Statistics'" key="data" class="tab-panel">
           <div class="scorecard-row">
             <div class="sc-card">
               <span class="sc-label">Total AFEs</span>
               <span class="sc-val num-font">{{ store.totalRecords }}</span>
             </div>
-            <div class="sc-card">
-              <span class="sc-label">Avg Water Depth</span>
-              <span class="sc-val num-font">{{ store.avgWaterDepth }}</span>
+            <div class="sc-card" :class="{ 'warn-card': pendingImportCount > 0 }">
+              <span class="sc-label">Pending Import</span>
+              <span class="sc-val num-font">{{ pendingImportCount }}</span>
             </div>
             <div class="sc-card">
-              <span class="sc-label">Data Completeness</span>
-              <span class="sc-val num-font">{{ overallCompleteness }}%</span>
+              <span class="sc-label">Issues Resolved</span>
+              <span class="sc-val num-font">{{ resolvedIssueCount }} <span class="sc-val-sub">out of {{ store.dlqEntries.length }}</span></span>
             </div>
-            <div class="sc-card" :class="{ 'warn-card': store.dlqCount > 0 }">
-              <span class="sc-label">DLQ Flags</span>
-              <span class="sc-val num-font">{{ store.dlqCount }}</span>
+            <div class="sc-card">
+              <span class="sc-label">Last Updated</span>
+              <span class="sc-val num-font">{{ lastUpdatedParts.value }} <span class="sc-val-sub">{{ lastUpdatedParts.unit }}</span></span>
             </div>
+          </div>
+          <div class="charts-grid charts-grid--2col">
+            <section class="card chart-card">
+              <h3 class="chart-title">Open Issues by Severity</h3>
+              <p class="chart-sub">Breakdown of unresolved issues only</p>
+              <div class="chart-wrap"><VChart :option="severityChart" autoresize style="height:260px" /></div>
+            </section>
+            <section class="card chart-card">
+              <h3 class="chart-title">AFE Completeness</h3>
+              <p class="chart-sub">{{ completeAfeCount }} of {{ store.totalRecords }} AFEs have every tracked field filled in</p>
+              <div class="chart-wrap"><VChart :option="afeCompletenessChart" autoresize style="height:280px" /></div>
+            </section>
+          </div>
+          <div class="charts-grid charts-grid--1col">
+            <section class="card chart-card">
+              <h3 class="chart-title">Data Completeness per Parameter</h3>
+              <p class="chart-sub">Found vs missing per parameter</p>
+              <div class="chart-wrap"><VChart :option="completenessChart" autoresize style="height:280px" /></div>
+              <p v-if="topProblemParameter && topProblemParameter.missing > 0" class="chart-callout">
+                Most problematic parameter: <strong>{{ topProblemParameter.label }}</strong>
+                <br>Missing in {{ topProblemParameter.missing }} of {{ store.totalRecords }} AFEs
+              </p>
+            </section>
           </div>
         </div>
 
-        <!-- Tab 2: Water Depth, Legs & Slots -->
-        <div v-else-if="activeTab === 'Water Depth, Legs & Slots'" key="wls" class="tab-panel">
-          <div class="charts-grid charts-grid--3col">
+        <!-- Tab 2: Parameters -->
+        <div v-else-if="activeTab === 'Parameters'" key="parameters" class="tab-panel">
+          <div class="charts-grid charts-grid--1col">
             <section class="card chart-card">
               <h3 class="chart-title">Water Depth Distribution</h3>
               <p class="chart-sub">Histogram of water depth (meters)</p>
               <div class="chart-wrap"><VChart :option="waterDepthChart" autoresize style="height:260px" /></div>
+            </section>
+          </div>
+          <div class="charts-grid charts-grid--3col">
+            <section class="card chart-card">
+              <h3 class="chart-title">Topside Weight Distribution</h3>
+              <p class="chart-sub">Histogram of topside weight (MT)</p>
+              <div class="chart-wrap"><VChart :option="topsideWeightChart" autoresize style="height:260px" /></div>
+            </section>
+            <section class="card chart-card">
+              <h3 class="chart-title">Jacket Weight Distribution</h3>
+              <p class="chart-sub">Histogram of jacket weight (MT)</p>
+              <div class="chart-wrap"><VChart :option="jacketWeightChart" autoresize style="height:260px" /></div>
+            </section>
+            <section class="card chart-card">
+              <h3 class="chart-title">Piling Weight Distribution</h3>
+              <p class="chart-sub">Histogram of piling weight (MT)</p>
+              <div class="chart-wrap"><VChart :option="pilingWeightChart" autoresize style="height:260px" /></div>
+            </section>
+          </div>
+          <div class="charts-grid charts-grid--3col">
+            <section class="card chart-card">
+              <h3 class="chart-title">Impurity Levels</h3>
+              <p class="chart-sub">H₂S, CO₂, and Hg (numeric records only)</p>
+              <div class="chart-wrap"><VChart :option="impurityChart" autoresize style="height:280px" /></div>
             </section>
             <section class="card chart-card">
               <h3 class="chart-title">Platforms by Number of Legs</h3>
@@ -75,43 +122,6 @@
             </section>
           </div>
         </div>
-
-        <!-- Tab 3: Weight Distribution -->
-        <div v-else-if="activeTab === 'Weight Distribution'" key="weights" class="tab-panel">
-          <div class="charts-grid charts-grid--3col">
-            <section class="card chart-card">
-              <h3 class="chart-title">Topside Weight</h3>
-              <p class="chart-sub">Distribution across projects (MT)</p>
-              <div class="chart-wrap"><VChart :option="topsideWeightChart" autoresize style="height:260px" /></div>
-            </section>
-            <section class="card chart-card">
-              <h3 class="chart-title">Jacket Weight</h3>
-              <p class="chart-sub">Distribution across projects (MT)</p>
-              <div class="chart-wrap"><VChart :option="jacketWeightChart" autoresize style="height:260px" /></div>
-            </section>
-            <section class="card chart-card">
-              <h3 class="chart-title">Piling Weight</h3>
-              <p class="chart-sub">Distribution across projects (MT)</p>
-              <div class="chart-wrap"><VChart :option="pilingWeightChart" autoresize style="height:260px" /></div>
-            </section>
-          </div>
-        </div>
-
-        <!-- Tab 4: Other -->
-        <div v-else key="other" class="tab-panel">
-          <div class="charts-grid charts-grid--2col">
-            <section class="card chart-card">
-              <h3 class="chart-title">Impurity Levels</h3>
-              <p class="chart-sub">H₂S, CO₂, and Hg (numeric records only)</p>
-              <div class="chart-wrap"><VChart :option="impurityChart" autoresize style="height:280px" /></div>
-            </section>
-            <section class="card chart-card">
-              <h3 class="chart-title">Data Completeness per Parameter</h3>
-              <p class="chart-sub">Found vs missing per parameter</p>
-              <div class="chart-wrap"><VChart :option="completenessChart" autoresize style="height:280px" /></div>
-            </section>
-          </div>
-        </div>
       </Transition>
     </template>
   </div>
@@ -121,23 +131,36 @@
 import { ref, computed, onMounted } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
-import { BarChart } from 'echarts/charts'
+import { BarChart, GaugeChart, PieChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { useAfeStore } from '~/stores/afeStore'
 
-use([BarChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
+use([BarChart, GaugeChart, PieChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 useHead({ title: 'SKK Migas — AFE Dashboard' })
 
 const store = useAfeStore()
 
-onMounted(() => {
+const extractedAfeNumbers = ref<string[]>([])
+
+onMounted(async () => {
   store.fetchAll()
+  try {
+    const res = await $fetch<{ afe_numbers: string[] }>('/api/extract/extracted-afe-numbers')
+    extractedAfeNumbers.value = res.afe_numbers
+  } catch {
+    // best-effort — stat just shows 0 if this fails
+  }
+})
+
+const pendingImportCount = computed(() => {
+  const importedSet = new Set(store.rows.map(r => r.afe_number))
+  return extractedAfeNumbers.value.filter(afe => !importedSet.has(afe)).length
 })
 
 /* ── Tabs ─────────────────────────────────────────────── */
-const tabs = ['Basic', 'Water Depth, Legs & Slots', 'Weight Distribution', 'Other'] as const
-const activeTab = ref<typeof tabs[number]>('Basic')
+const tabs = ['Data Statistics', 'Parameters'] as const
+const activeTab = ref<typeof tabs[number]>('Data Statistics')
 
 /* ── Color palette ────────────────────────────────────── */
 const C = {
@@ -149,23 +172,67 @@ const C = {
   text: '#0f172a',
   sub: '#64748b',
   grid: '#f1f5f9',
+  lightgreen: '#a7f3d0'
 }
 
 /* ── Helpers (keys match afe_records DB columns) ─────── */
-const paramKeys = ['water_depth', 'weight_topside', 'weight_jacket', 'piling_weight', 'number_of_legs', 'number_of_slots', 'impurities_h2s', 'impurities_co2', 'impurities_hg']
+const paramKeys = ['water_depth', 'topside_weight', 'jacket_weight', 'piling_weight', 'number_of_legs', 'number_of_slots', 'impurities_h2s', 'impurities_co2', 'impurities_hg']
 const paramLabels: Record<string, string> = {
-  water_depth: 'Water Depth', weight_topside: 'Topside Wt', weight_jacket: 'Jacket Wt',
-  piling_weight: 'Piling Wt', number_of_legs: 'Legs', number_of_slots: 'Slots',
+  water_depth: 'Water Depth', topside_weight: 'Topside Weight', jacket_weight: 'Jacket Weight',
+  piling_weight: 'Piling Weight', number_of_legs: 'Legs', number_of_slots: 'Slots',
   impurities_h2s: 'H₂S', impurities_co2: 'CO₂', impurities_hg: 'Hg',
+  topside_equipment_wellhead: 'Equipment Wellhead', topside_equipment_processing: 'Equipment Processing', topside_equipment_utilities: 'Equipment Utilities',
 }
 
-const overallCompleteness = computed(() => {
-  const total = store.totalRecords * paramKeys.length
-  const found = paramKeys.reduce((acc, k) => acc + store.numericValues(k).length, 0)
-  const textKeys = ['topside_equipment_wellhead', 'topside_equipment_processing', 'topside_equipment_utilities']
-  const textFound = textKeys.reduce((acc, k) => acc + store.rows.filter(r => r[k] != null && r[k] !== '').length, 0)
-  const adjTotal = total + store.totalRecords * textKeys.length
-  return adjTotal ? Math.round(((found + textFound) / adjTotal) * 100) : 0
+const severityChart = computed(() => {
+  const bySeverity: Record<string, number> = {}
+  for (const d of store.dlqEntries) {
+    if (d.resolved) continue
+    const key = d.severity || 'unspecified'
+    bySeverity[key] = (bySeverity[key] || 0) + 1
+  }
+  const palette = [C.primary, C.secondary, C.tertiary, C.muted]
+  return {
+    tooltip: { ...tip, trigger: 'item' as const },
+    legend: { bottom: 0, textStyle: { fontFamily: 'Inter', fontSize: 11, color: C.sub } },
+    series: [{
+      type: 'pie' as const,
+      radius: ['45%', '70%'],
+      itemStyle: { borderColor: '#fff', borderWidth: 2 },
+      label: { show: false },
+      data: Object.entries(bySeverity).map(([name, value], i) => ({
+        name, value, itemStyle: { color: palette[i % palette.length] },
+      })),
+    }],
+  }
+})
+/* ── Per-AFE completeness — same "found" definition as the per-parameter
+   chart below, just grouped by row instead of by column. An AFE counts as
+   fully complete only if every one of its tracked fields has a value. ── */
+const allCompletenessKeys = [
+  ...paramKeys,
+  'topside_equipment_wellhead', 'topside_equipment_processing', 'topside_equipment_utilities',
+]
+const completeAfeCount = computed(() =>
+  store.rows.filter(r => allCompletenessKeys.every(k => r[k] != null && r[k] !== '')).length
+)
+const afeCompletenessChart = computed(() => {
+  const complete = completeAfeCount.value
+  const incomplete = store.totalRecords - complete
+  return {
+    tooltip: { ...tip, trigger: 'item' as const },
+    legend: { bottom: 0, textStyle: { fontFamily: 'Inter', fontSize: 11, color: C.sub } },
+    series: [{
+      type: 'pie' as const,
+      radius: ['45%', '70%'],
+      itemStyle: { borderColor: '#fff', borderWidth: 2 },
+      label: { show: false },
+      data: [
+        { name: 'Complete', value: complete, itemStyle: { color: C.green } },
+        { name: 'Incomplete', value: incomplete, itemStyle: { color: C.lightgreen } },
+      ],
+    }],
+  }
 })
 
 /* ── Shared chart config ─────────────────────────────── */
@@ -193,10 +260,10 @@ const waterDepthChart = computed(() =>
 
 /* ── Weight Distribution — three SEPARATE histograms ─── */
 const topsideWeightChart = computed(() =>
-  makeHistogram(store.numericValues('weight_topside'), [0, 500, 1000, 1500, 2000, 2500, 3000], C.primary)
+  makeHistogram(store.numericValues('topside_weight'), [0, 500, 1000, 1500, 2000, 2500, 3000], C.primary)
 )
 const jacketWeightChart = computed(() =>
-  makeHistogram(store.numericValues('weight_jacket'), [0, 1000, 2000, 3000, 4000, 5000, 6000], C.secondary)
+  makeHistogram(store.numericValues('jacket_weight'), [0, 1000, 2000, 3000, 4000, 5000, 6000], C.secondary)
 )
 const pilingWeightChart = computed(() =>
   makeHistogram(store.numericValues('piling_weight'), [0, 400, 800, 1200, 1600, 2000, 2400], C.tertiary)
@@ -247,13 +314,13 @@ const impurityChart = computed(() => {
 
 /* ── Completeness horizontal bar ─────────────────────── */
 const completenessChart = computed(() => {
-  const allKeys = [...paramKeys, 'topside_equipment_wellhead', 'topside_equipment_processing', 'topside_equipment_utilities']
+  const allKeys = ['water_depth', 'topside_weight', 'jacket_weight', 'piling_weight', 'number_of_legs', 'number_of_slots', 'topside_equipment_wellhead', 'topside_equipment_processing', 'topside_equipment_utilities', 'impurities_h2s', 'impurities_co2', 'impurities_hg']
   const labels = allKeys.map(k => paramLabels[k] || k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))
   const total = store.totalRecords
   const found = allKeys.map(k => store.rows.filter(r => r[k] != null && r[k] !== '').length)
   const missing = found.map(f => total - f)
   return {
-    grid: { left: 130, right: 24, top: 16, bottom: 24 }, tooltip: { ...tip, trigger: 'axis' as const },
+    grid: { left: 180, right: 24, top: 16, bottom: 24 }, tooltip: { ...tip, trigger: 'axis' as const },
     legend: { show: false },
     yAxis: { type: 'category' as const, data: labels, axisLabel, inverse: true },
     xAxis: { type: 'value' as const, max: total, splitLine, axisLabel },
@@ -263,6 +330,43 @@ const completenessChart = computed(() => {
     ],
   }
 })
+
+/* Last Updated Time Script */
+function timeAgoParts(sqliteDatetime: string): { value: string; unit: string } {
+  const then = new Date(sqliteDatetime.replace(' ', 'T') + 'Z').getTime()
+  const diffSec = Math.floor((Date.now() - then) / 1000)
+  if (diffSec < 60) return { value: 'Just now', unit: '' }
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return { value: String(diffMin), unit: `minute${diffMin !== 1 ? 's' : ''} ago` }
+  const diffHour = Math.floor(diffMin / 60)
+  if (diffHour < 24) return { value: String(diffHour), unit: `hour${diffHour !== 1 ? 's' : ''} ago` }
+  const diffDay = Math.floor(diffHour / 24)
+  return { value: String(diffDay), unit: `day${diffDay !== 1 ? 's' : ''} ago` }
+}
+const lastUpdatedParts = computed(() => {
+  const timestamps = store.rows.map(r => r.updated_at).filter(Boolean) as string[]
+  if (timestamps.length === 0) return { value: '—', unit: '' }
+  return timeAgoParts(timestamps.reduce((latest, t) => (t > latest ? t : latest)))
+})
+
+/* Problem Priority Script*/
+const topProblemParameter = computed(() => {
+  const allKeys = [...paramKeys, 'topside_equipment_wellhead', 'topside_equipment_processing', 'topside_equipment_utilities']
+  const total = store.totalRecords
+  let worst: { label: string; missing: number } | null = null
+  for (const k of allKeys) {
+    const found = store.rows.filter(r => r[k] != null && r[k] !== '').length
+    const missing = total - found
+    if (!worst || missing > worst.missing) {
+      worst = { label: paramLabels[k] || k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), missing }
+    }
+  }
+  return worst
+})
+
+/* Issue Resolution Script */
+const resolvedIssueCount = computed(() => store.dlqEntries.filter(d => d.resolved).length)
+
 </script>
 
 <style scoped>
@@ -286,7 +390,7 @@ const completenessChart = computed(() => {
   cursor: pointer; outline: none; transition: all .2s ease; white-space: nowrap;
 }
 .tab-btn:hover { background: #e2e8f0; color: #334155; }
-.tab-btn.active-tab { background: var(--platform2, #ef4444); color: #fff; box-shadow: 0 2px 8px rgba(239,68,68,.25); }
+.tab-btn.active-tab { background: var(--platform2, #ef4444); color: #000000; box-shadow: 0 2px 8px rgba(239,68,68,.25); }
 
 .tab-fade-enter-active, .tab-fade-leave-active { transition: opacity .18s ease, transform .18s cubic-bezier(0.4,0,0.2,1); }
 .tab-fade-enter-from { opacity: 0; transform: translateY(8px); }
@@ -294,18 +398,22 @@ const completenessChart = computed(() => {
 
 .tab-panel { width: 100%; }
 
+.chart-callout { font-size: 12.5px; color: #64748b; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; }
+.chart-callout strong { color: #0f172a; }
+
 /* Scorecard */
-.scorecard-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.sc-card { background: #fff; border-radius: 20px; padding: 20px 22px; box-shadow: 0 4px 16px rgba(0,0,0,.04); position: relative; overflow: hidden; }
+.scorecard-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.sc-card { background: #fff; border-radius: 20px; margin-bottom: 24px; padding: 15px 15px; box-shadow: 0 4px 16px rgba(0,0,0,.04); position: relative; overflow: hidden; }
 .warn-card { background: #fffbeb; }
 .sc-label { font-family: 'Inter'; font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: #94a3b8; display: block; }
 .sc-val { font-size: 28px; font-weight: 800; color: #0f172a; margin-top: 6px; display: block; letter-spacing: -0.5px; }
+.sc-val-sub { font-size: 15px; font-weight: 600; color: #94a3b8; margin-left: 2px; }
 .num-font { font-family: 'Inter', monospace; }
 
 /* Charts grid */
 .charts-grid--2col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .charts-grid--3col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
-.chart-card { min-height: 320px; }
+.chart-card { min-height: 320px; margin-bottom: 24px; }
 .card { position: relative; background: #fff; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.03); padding: 24px; overflow: hidden; }
 .chart-title { font-family: 'Poppins'; font-size: 15px; font-weight: 700; color: #0f172a; }
 .chart-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; margin-bottom: 14px; }

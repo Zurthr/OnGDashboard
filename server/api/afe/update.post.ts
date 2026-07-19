@@ -5,13 +5,12 @@ interface UpdateBody {
 
 // Reverse of etlOutput.ts's toColumnName(): maps a DB column back to the
 // (parameter_name, sub_parameter) pair the DLQ uses, so that editing a field
-// can auto-resolve any DLQ entries flagging that exact field. Uses the ETL's
-// naming (e.g. "topside_weight", not "Weight_Topside").
+// can auto-resolve any DLQ entries flagging that exact field.
 const columnToParam: Record<string, { parameter_name: string; sub_parameter?: string }> = {
   project_type: { parameter_name: 'project_type' },
   water_depth: { parameter_name: 'water_depth' },
-  weight_topside: { parameter_name: 'topside_weight' },
-  weight_jacket: { parameter_name: 'jacket_weight' },
+  topside_weight: { parameter_name: 'topside_weight' },
+  jacket_weight: { parameter_name: 'jacket_weight' },
   piling_weight: { parameter_name: 'piling_weight' },
   number_of_legs: { parameter_name: 'number_of_legs' },
   number_of_slots: { parameter_name: 'number_of_slots' },
@@ -31,7 +30,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const allowedColumns = [
-    'project_type', 'water_depth', 'water_depth_unit', 'weight_topside', 'weight_jacket', 'piling_weight',
+    'project_type', 'water_depth', 'water_depth_unit', 'topside_weight', 'jacket_weight', 'piling_weight',
     'number_of_legs', 'number_of_slots', 'topside_equipment_wellhead',
     'topside_equipment_processing', 'topside_equipment_utilities',
     'impurities_h2s', 'impurities_co2', 'impurities_hg',
@@ -46,7 +45,7 @@ export default defineEventHandler(async (event) => {
   const setClause = fields.map(f => `${f} = @${f}`).join(', ')
 
   const resolveDlq = db.prepare(`
-    UPDATE dlq_entries SET resolved = 1, resolved_at = datetime('now')
+    UPDATE issue_data SET resolved = 1, resolved_at = datetime('now')
     WHERE afe_number = @afe_number
       AND LOWER(parameter_name) = LOWER(@parameter_name)
       AND LOWER(COALESCE(sub_parameter, '')) = LOWER(COALESCE(@sub_parameter, ''))

@@ -3,8 +3,8 @@ export interface AfeRecordInput {
   project_type?: string | null
   water_depth?: number | null
   water_depth_unit?: string | null
-  weight_topside?: number | null
-  weight_jacket?: number | null
+  topside_weight?: number | null
+  jacket_weight?: number | null
   piling_weight?: number | null
   number_of_legs?: number | null
   number_of_slots?: number | null
@@ -19,6 +19,8 @@ export interface AfeRecordInput {
 export interface DlqEntryInput {
   parameter_name: string
   sub_parameter?: string | null
+  unit?: string | null
+  notes?: string | null
   raw_value?: string | null
   normalized_value?: string | null
   failed_rule?: string | null
@@ -55,12 +57,12 @@ export function upsertAfeRecord(record: AfeRecordInput, dlqEntries: DlqEntryInpu
 
   const upsertRecord = db.prepare(`
     INSERT INTO afe_records (
-      afe_number, project_type, water_depth, water_depth_unit, weight_topside, weight_jacket,
+      afe_number, project_type, water_depth, water_depth_unit, topside_weight, jacket_weight,
       piling_weight, number_of_legs, number_of_slots,
       topside_equipment_wellhead, topside_equipment_processing, topside_equipment_utilities,
       impurities_h2s, impurities_co2, impurities_hg, updated_at
     ) VALUES (
-      @afe_number, @project_type, @water_depth, @water_depth_unit, @weight_topside, @weight_jacket,
+      @afe_number, @project_type, @water_depth, @water_depth_unit, @topside_weight, @jacket_weight,
       @piling_weight, @number_of_legs, @number_of_slots,
       @topside_equipment_wellhead, @topside_equipment_processing, @topside_equipment_utilities,
       @impurities_h2s, @impurities_co2, @impurities_hg, datetime('now')
@@ -69,8 +71,8 @@ export function upsertAfeRecord(record: AfeRecordInput, dlqEntries: DlqEntryInpu
       project_type = excluded.project_type,
       water_depth = excluded.water_depth,
       water_depth_unit = excluded.water_depth_unit,
-      weight_topside = excluded.weight_topside,
-      weight_jacket = excluded.weight_jacket,
+      topside_weight = excluded.topside_weight,
+      jacket_weight = excluded.jacket_weight,
       piling_weight = excluded.piling_weight,
       number_of_legs = excluded.number_of_legs,
       number_of_slots = excluded.number_of_slots,
@@ -84,13 +86,15 @@ export function upsertAfeRecord(record: AfeRecordInput, dlqEntries: DlqEntryInpu
   `)
 
   const insertDlq = db.prepare(`
-    INSERT INTO dlq_entries (
-      afe_number, parameter_name, sub_parameter, raw_value, normalized_value,
+    INSERT INTO issue_data (
+      afe_number, parameter_name, sub_parameter, unit, notes, validation_status,
+      raw_value, normalized_value,
       failed_rule, error_type, severity, failure_action,
       reference_context, pages, json_path, source_file
     )
     VALUES (
-      @afe_number, @parameter_name, @sub_parameter, @raw_value, @normalized_value,
+      @afe_number, @parameter_name, @sub_parameter, @unit, @notes, 'FAIL',
+      @raw_value, @normalized_value,
       @failed_rule, @error_type, @severity, @failure_action,
       @reference_context, @pages, @json_path, @source_file
     )
@@ -102,8 +106,8 @@ export function upsertAfeRecord(record: AfeRecordInput, dlqEntries: DlqEntryInpu
       project_type: data.project_type ?? null,
       water_depth: data.water_depth ?? null,
       water_depth_unit: data.water_depth_unit ?? null,
-      weight_topside: data.weight_topside ?? null,
-      weight_jacket: data.weight_jacket ?? null,
+      topside_weight: data.topside_weight ?? null,
+      jacket_weight: data.jacket_weight ?? null,
       piling_weight: data.piling_weight ?? null,
       number_of_legs: data.number_of_legs ?? null,
       number_of_slots: data.number_of_slots ?? null,
@@ -117,15 +121,20 @@ export function upsertAfeRecord(record: AfeRecordInput, dlqEntries: DlqEntryInpu
 
     // Merge DLQ entries instead of wiping and reinserting: if an identical
     // issue (same afe + parameter + sub_parameter + failed_rule) already
-    // exists, leave it untouched so its resolved/resolved_at status survives
-    // re-importing the same ETL output. Only genuinely new issues get inserted.
+    // exists, don't insert a duplicate — but if it was previously resolved,
+    // reopen it. A fresh ETL run reporting the same failure again means the
+    // underlying value (which this same import just overwrote in
+    // afe_records) is currently bad again, regardless of past manual review;
+    // resolved should reflect current state, not history that a re-import
+    // may have just invalidated.
     const findExisting = db.prepare(`
-      SELECT id FROM dlq_entries
+      SELECT id, resolved FROM issue_data
       WHERE afe_number = @afe_number
         AND LOWER(parameter_name) = LOWER(@parameter_name)
         AND LOWER(COALESCE(sub_parameter, '')) = LOWER(COALESCE(@sub_parameter, ''))
         AND LOWER(COALESCE(failed_rule, '')) = LOWER(COALESCE(@failed_rule, ''))
     `)
+    const reopenExisting = db.prepare(`UPDATE issue_data SET resolved = 0, resolved_at = NULL WHERE id = @id`)
 
     for (const entry of dlq) {
       const existing = findExisting.get({
@@ -133,13 +142,19 @@ export function upsertAfeRecord(record: AfeRecordInput, dlqEntries: DlqEntryInpu
         parameter_name: entry.parameter_name,
         sub_parameter: entry.sub_parameter ?? null,
         failed_rule: entry.failed_rule ?? null,
-      })
-      if (existing) continue
+      }) as { id: number; resolved: number } | undefined
+
+      if (existing) {
+        if (existing.resolved) reopenExisting.run({ id: existing.id })
+        continue
+      }
 
       insertDlq.run({
         afe_number: data.afe_number,
         parameter_name: entry.parameter_name,
         sub_parameter: entry.sub_parameter ?? null,
+        unit: entry.unit ?? null,
+        notes: entry.notes ?? null,
         raw_value: entry.raw_value ?? null,
         normalized_value: entry.normalized_value ?? null,
         failed_rule: entry.failed_rule ?? null,
@@ -158,19 +173,19 @@ export function upsertAfeRecord(record: AfeRecordInput, dlqEntries: DlqEntryInpu
 }
 
 /**
- * Replaces all curated_raw_rows for one AFE with a fresh set (used during
+ * Replaces all raw_data rows for one AFE with a fresh set (used during
  * bulk CSV import, for the Curated Data tab's verbatim long-format view).
  */
 export function replaceCuratedRawRows(afeNumber: string, rows: CuratedRawRowInput[]) {
   const db = useAfeDb()
 
   const insertRow = db.prepare(`
-    INSERT INTO curated_raw_rows (afe_number, parameter_name, sub_parameter, value, unit, validation_status, notes, filename, json_path, reference_context, pages)
+    INSERT INTO raw_data (afe_number, parameter_name, sub_parameter, value, unit, validation_status, notes, filename, json_path, reference_context, pages)
     VALUES (@afe_number, @parameter_name, @sub_parameter, @value, @unit, @validation_status, @notes, @filename, @json_path, @reference_context, @pages)
   `)
 
   const writeAll = db.transaction((afe: string, rowList: CuratedRawRowInput[]) => {
-    db.prepare('DELETE FROM curated_raw_rows WHERE afe_number = ?').run(afe)
+    db.prepare('DELETE FROM raw_data WHERE afe_number = ?').run(afe)
     for (const row of rowList) {
       insertRow.run({
         afe_number: afe,
@@ -189,4 +204,43 @@ export function replaceCuratedRawRows(afeNumber: string, rows: CuratedRawRowInpu
   })
 
   writeAll(afeNumber, rows)
+}
+
+export interface ExtractionPayloadInput {
+  source_filename: string
+  afe_number?: string | null
+  payload: unknown
+}
+
+/**
+ * Preserves the raw extraction payload for one document — see the
+ * extraction_payloads table comment in afeDb.ts for why. Upserts by
+ * source_filename, so re-importing the same file just replaces its row.
+ */
+export function saveExtractionPayload(input: ExtractionPayloadInput) {
+  const db = useAfeDb()
+
+  db.prepare(`
+    INSERT INTO extraction_payloads (source_filename, afe_number, payload_json, imported_at)
+    VALUES (@source_filename, @afe_number, @payload_json, datetime('now'))
+    ON CONFLICT(source_filename) DO UPDATE SET
+      afe_number = excluded.afe_number,
+      payload_json = excluded.payload_json,
+      imported_at = datetime('now')
+  `).run({
+    source_filename: input.source_filename,
+    afe_number: input.afe_number ?? null,
+    payload_json: JSON.stringify(input.payload),
+  })
+}
+
+/**
+ * Removes one raw extraction payload by source_filename. This is a separate,
+ * lower-stakes action from deleting a real AFE record (server/api/afe/delete.post.ts)
+ * — it only cleans up the raw audit copy, never afe_records/raw_data/issue_data.
+ */
+export function deleteExtractionPayload(sourceFilename: string) {
+  const db = useAfeDb()
+  const result = db.prepare('DELETE FROM extraction_payloads WHERE source_filename = ?').run(sourceFilename)
+  return result.changes > 0
 }

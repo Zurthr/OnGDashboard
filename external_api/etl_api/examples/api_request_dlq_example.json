@@ -1,0 +1,27 @@
+{
+  "source_filename": "AFE-002.json",
+  "payload": {
+    "AFE_Extraction": {
+      "AFE_Number": {
+        "value": "04-3811",
+        "reference_context": "AFE 04-3811",
+        "pages": "1"
+      },
+      "Project_Type": {
+        "value": "Platform",
+        "reference_context": "Platform",
+        "pages": "1"
+      },
+      "Water_Depth": {
+        "value": "invalid depth m",
+        "reference_context": "Water depth invalid",
+        "pages": "2"
+      },
+      "Weight_Topside": {
+        "value": "1500000000 MT",
+        "reference_context": "Topside weight outlier",
+        "pages": "3"
+      }
+    }
+  }
+}

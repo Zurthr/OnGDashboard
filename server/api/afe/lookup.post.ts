@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: `AFE ${afe_number} not found` })
   }
 
-  const dlq = db.prepare('SELECT * FROM dlq_entries WHERE afe_number = ?').all(afe_number)
+  const dlq = db.prepare('SELECT * FROM issue_data WHERE afe_number = ?').all(afe_number)
 
   return { ...record, dlq_entries: dlq }
 })
