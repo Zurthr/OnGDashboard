@@ -142,9 +142,10 @@ export const useExtractStore = defineStore('extract', () => {
 
   watch(files, (newVal) => {
     // Once a file's payload is confirmed saved server-side (payloadSaved,
-    // set only after autoSaveExtractionPayload's network call actually
-    // succeeds — not just status === 'done', which can be true slightly
-    // before that confirmation lands), there's no need to also duplicate
+    // set once hydrateFromDatabase() confirms a row exists in
+    // extraction_payloads — the extraction API saves it directly the
+    // moment the job finishes, so this is a read-confirmation now, not a
+    // write-confirmation), there's no need to also duplicate
     // the full extracted JSON into localStorage — hydrateFromDatabase()
     // reconstructs it from extraction_payloads on next load. Anything not
     // yet confirmed saved (still processing, queued, errored, or the save
@@ -199,13 +200,23 @@ export const useExtractStore = defineStore('extract', () => {
         // so refresh it regardless of whether this entry's payload was
         // ever stripped locally.
         existing.imported = row.imported
+
+        // A matching row here means this file is genuinely saved server-side
+        // — either because the extraction API wrote it directly the moment
+        // the job finished, or because it was restored from a previous
+        // session. Either way, payloadSaved needs to reflect that regardless
+        // of whether existing.result is already populated in memory (it
+        // usually already is, right after a fresh extraction) — this is the
+        // only signal the client gets that a row now exists, since saving
+        // no longer happens through an explicit client-triggered call.
+        existing.payloadSaved = true
+
         if (!existing.result) {
           // Was restored from localStorage with its payload stripped
           // (payloadSaved was true, so result/raw_text weren't persisted)
           // — fill the gap back in from the database instead of re-adding
           // a duplicate entry.
           existing.result = row.payload
-          existing.payloadSaved = true
           if (!isValid) {
             existing.status = 'error'
             existing.error = 'This extraction has no usable data (no AFE Number found) — it should not have been marked Done.'
@@ -279,8 +290,9 @@ export const useExtractStore = defineStore('extract', () => {
   // Removing a queue item never touches the database on its own — the queue
   // is just this session's working list, not the repository. But if this
   // Every successfully-extracted file with a valid AFE Number gets
-  // auto-saved to extraction_payloads the moment it finishes (see
-  // autoSaveExtractionPayload/pollStatus) — that happens regardless of
+  // saved to extraction_payloads directly by the extraction API the moment
+  // the job finishes server-side (see save_extraction_payload_to_db in
+  // api.py) — that happens regardless of
   // whether it's ever imported. So removing a queue item should clean up
   // that raw-payload row too, or it'd just pile up an orphaned entry for
   // every file ever extracted and later dismissed. This is deliberately NOT
@@ -403,22 +415,12 @@ export const useExtractStore = defineStore('extract', () => {
             f.status = 'error'
             f.error = 'Extraction completed, but no AFE Number was found in this document. Without one, this file can\'t be tracked in the repository — check the source PDF and try re-extracting.'
           } else {
-            // Preserve the raw extraction the moment it succeeds — independent
-            // of "Import to Repository" entirely. Import stays a deliberate
-            // click (it calls the ETL API and can overwrite repository data),
-            // but this is just a safety copy so a successful extraction is
-            // never lost to the 3-hour localStorage expiry if the user hasn't
-            // imported yet. Only reached when there IS an AFE Number — a file
-            // that's about to be marked as an error never gets written here
-            // at all, since there's no point saving something that's just
-            // going to be deleted again on removal.
-            await autoSaveExtractionPayload(f)
-
-            // A fresh extraction has no idea whether this exact AFE was
-            // already imported in a previous session — that check only ran
-            // once, at page load, in hydrateFromDatabase(). Re-running it
-            // here picks that up for this file (and refreshes everyone
-            // else's status too, which is harmless — it's just a read).
+            // The extraction API now saves directly to extraction_payloads
+            // the moment the job finishes server-side (see api.py's
+            // save_extraction_payload_to_db) — no longer dependent on this
+            // client still being here to notice. hydrateFromDatabase() picks
+            // up f.payloadSaved from that row on the next call below, so
+            // there's no separate save call needed here anymore.
             await hydrateFromDatabase()
           }
         } else if (response.status === 'error') {
@@ -480,23 +482,6 @@ export const useExtractStore = defineStore('extract', () => {
     return {
       source_filename: getSourceFilename(f),
       payload: f.result,
-    }
-  }
-
-  // Fire-and-forget-ish: best effort, doesn't disrupt the extraction UX if
-  // it fails (e.g. the server briefly unreachable) — the result still lives
-  // in this file's in-memory/localStorage state as a fallback either way.
-  async function autoSaveExtractionPayload(f: QueuedFile) {
-    if (!f.result) return
-    try {
-      const doc = buildDocument(f)
-      await $fetch('/api/extract/save-payload', {
-        method: 'POST',
-        body: doc,
-      })
-      f.payloadSaved = true // only set once the server has actually confirmed it — see the localStorage watcher below
-    } catch (e) {
-      console.warn('Failed to auto-save extraction payload:', e)
     }
   }
 

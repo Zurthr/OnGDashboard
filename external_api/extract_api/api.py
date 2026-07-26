@@ -2,6 +2,8 @@ import os
 import time
 import uuid
 import json
+import re
+import sqlite3
 from json_repair import repair_json
 import base64
 import fitz  # PyMuPDF
@@ -15,6 +17,11 @@ from ollama import Client
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
+
+# Same SQLite file the Nuxt server (afeDb.ts) reads and writes — already in
+# WAL mode there, which is what makes it safe for this separate Python
+# process to write to it directly alongside the Node.js process.
+DB_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "server", "database", "database.sqlite3")
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "https://ollama.defendercf.com").strip().strip('"').strip("'")
 CF_CLIENT_ID = os.getenv("CF_ACCESS_CLIENT_ID", "").strip().strip('"').strip("'")
@@ -39,8 +46,8 @@ EMPTY_EXTRACTION = {
         "AFE_Number": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
         "Project_Type": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
         "Water_Depth": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
-        "Weight_Topside": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
-        "Weight_Jacket": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+        "Topside_Weight": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
+        "Jacket_Weight": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
         "Piling_Weight": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
         "Number_of_Legs": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
         "Number_of_Slots": {"value": None, "reference_context": "Not Found", "pages": "Not Found"},
@@ -190,11 +197,8 @@ def process_pdf_and_ask(pdf_path, question, job_id):
     final_response = client.chat(
         model='gemma4:e4b',
         messages=[
-            # System: your extraction rules (the model treats this as its instructions)
             {'role': 'system', 'content': question},
-            # User: ONLY the document text (sent once, not twice)
             {'role': 'user', 'content': f"--- BEGIN AFE DOCUMENT ---\n{extracted_markdown}\n--- END AFE DOCUMENT ---"},
-            # Assistant prefill: force the model to start outputting JSON immediately
             {'role': 'assistant', 'content': '```json\n{'}
         ],
         options={
@@ -205,7 +209,38 @@ def process_pdf_and_ask(pdf_path, question, job_id):
     return '{' + final_response['message']['content']
 
 # --- BACKGROUND TASK WORKER ---
-def run_extraction_job(job_id: str, pdf_path: str):
+def save_extraction_payload_to_db(source_filename: str, afe_number: str | None, payload: dict):
+    """
+    Writes the completed extraction directly to extraction_payloads the
+    moment this job finishes — independent of whether any browser is still
+    polling for this job's status. Mirrors saveExtractionPayload() in
+    server/utils/upsertAfe.ts exactly (same table, same upsert-by-filename
+    behavior), so either side writing this row is interchangeable.
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=10)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute(
+            """
+            INSERT INTO extraction_payloads (source_filename, afe_number, payload_json, imported_at)
+            VALUES (?, ?, ?, datetime('now'))
+            ON CONFLICT(source_filename) DO UPDATE SET
+                afe_number = excluded.afe_number,
+                payload_json = excluded.payload_json,
+                imported_at = datetime('now')
+            """,
+            (source_filename, afe_number, json.dumps(payload)),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        # A failed save here shouldn't fail the extraction job itself — the
+        # client's own autoSaveExtractionPayload() call remains as a fallback
+        # if this direct write doesn't go through for any reason.
+        print(f"Warning: failed to save extraction payload directly to database: {e}")
+
+
+def run_extraction_job(job_id: str, pdf_path: str, original_filename: str):
     user_query = """
     1. ROLE
     Act as an Expert Offshore Petroleum Engineer and Data Extraction Specialist.
@@ -253,12 +288,12 @@ def run_extraction_job(job_id: str, pdf_path: str):
         "reference_context": "[Exact sentence from text, or 'Not Found']",
         "pages": "[Page number(s), or 'Not Found']"
         },
-        "Weight_Topside": {
+        "Topside_Weight": {
         "value": "[Extracted value and unit, or null]",
         "reference_context": "[Exact sentence from text, or 'Not Found']",
         "pages": "[Page number(s), or 'Not Found']"
         },
-        "Weight_Jacket": {
+        "Jacket_Weight": {
         "value": "[Extracted value and unit, or null]",
         "reference_context": "[Exact sentence from text, or 'Not Found']",
         "pages": "[Page number(s), or 'Not Found']"
@@ -341,6 +376,29 @@ def run_extraction_job(job_id: str, pdf_path: str):
         else:
             # ✅ SUCCESS: It parsed correctly.
             set_job_status(job_id, "done", "Extraction Complete", 100, result=parsed_json)
+
+            # Save directly to the database now, rather than waiting for the
+            # client to notice via polling and call save-payload.post.ts —
+            # this is what makes a completed extraction survive the browser
+            # being closed mid-job. Matches getSourceFilename()'s convention
+            # in extractStore.ts exactly, so hydrateFromDatabase() still
+            # matches this row up with the right QueuedFile on the client.
+            #
+            # Only saved when a real AFE Number was found — matching
+            # hasValidExtraction()'s check on the client exactly. A document
+            # with no AFE Number becomes an error state there (nothing to
+            # key it on downstream), so it's never persisted here either;
+            # saving it anyway would let an orphaned row reach the database
+            # this direct path was never meant to create.
+            afe_number = (
+                parsed_json.get("AFE_Extraction", {}).get("AFE_Number", {}).get("value")
+                if isinstance(parsed_json, dict) else None
+            )
+            afe_number = afe_number if isinstance(afe_number, str) and afe_number.strip() else None
+
+            if afe_number:
+                source_filename = re.sub(r"\.pdf$", "", original_filename, flags=re.IGNORECASE) + "_extracted.json"
+                save_extraction_payload_to_db(source_filename, afe_number, parsed_json)
             
     except Exception as e:
         set_job_status(job_id, "error", "Failed during processing", 0, error=str(e))
@@ -355,14 +413,14 @@ def run_extraction_job(job_id: str, pdf_path: str):
 async def start_extraction(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     job_id = str(uuid.uuid4())
     pdf_path = os.path.join(UPLOAD_DIR, f"{job_id}.pdf")
-    
+    original_filename = file.filename or f"{job_id}.pdf"
+
     with open(pdf_path, "wb") as f:
         f.write(await file.read())
         
-    # Initialize status immediately
     set_job_status(job_id, "processing", "File uploaded. Starting background worker...", 10)
     
-    background_tasks.add_task(run_extraction_job, job_id, pdf_path)
+    background_tasks.add_task(run_extraction_job, job_id, pdf_path, original_filename)
     return {"jobId": job_id, "status": "processing"}
 
 @app.get("/api/extract/status")

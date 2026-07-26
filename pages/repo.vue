@@ -3,9 +3,9 @@
 
     <div class="page-head">
       <h1 class="page-title">Project Repository</h1>
-        <button class="btn btn-ghost" :disabled="store.loading || loadingExtra" @click="refreshAll">
-          <Icon name="heroicons:arrow-path" class="btn-ic" :class="{ spinning: store.loading || loadingExtra }" />
-          {{ (store.loading || loadingExtra) ? 'Refreshing…' : 'Refresh' }}
+        <button class="btn btn-ghost" :disabled="store.loading" @click="refreshAll">
+          <Icon name="heroicons:arrow-path" class="btn-ic" :class="{ spinning: store.loading }" />
+          {{ store.loading ? 'Refreshing…' : 'Refresh' }}
         </button>
     </div>
 
@@ -86,7 +86,7 @@
         </div>
 
         <div v-if="store.dlqCount > 0" class="legend">
-          <span class="flag-dot flag-dot--legend" /> <span class="legend-text">Cell flagged by DLQ — hover for details, click row to edit</span>
+          <span class="flag-dot flag-dot--legend" /> <span class="legend-text">Cell flagged by DLQ - hover for details<br>Click row to edit</span>
         </div>
 
         <div v-if="totalPages > 1" class="pagination">
@@ -105,7 +105,7 @@
           </div>
           <span class="result-count">{{ filteredSortedCurated.length }} row{{ filteredSortedCurated.length !== 1 ? 's' : '' }}</span>
         </div>
-        <div v-if="loadingExtra" class="loading-note">Loading…</div>
+        <div v-if="store.loading" class="loading-note">Loading…</div>
         <div v-else class="table-scroll">
           <table class="repo-table">
             <thead>
@@ -158,7 +158,7 @@
         </div>
       </section>
 
-      <!-- Tab 3: DLQ (unqualified data flagged by the ETL pipeline) -->
+      <!-- Tab 3: Issue (unqualified data flagged by the ETL pipeline) -->
       <section v-else key="dlq" class="card table-card">
         <div class="table-toolbar">
           <div class="search-wrap">
@@ -177,6 +177,10 @@
             <thead>
               <tr>
                 <th class="col-status">Status</th>
+                <th class="sortable-th" @click="toggleDlqSort('severity')">
+                  Severity
+                  <Icon v-if="dlqSortKey === 'severity'" :name="dlqSortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
+                </th>
                 <th class="sortable-th" @click="toggleDlqSort('afe_number')">
                   AFE Number
                   <Icon v-if="dlqSortKey === 'afe_number'" :name="dlqSortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
@@ -199,10 +203,6 @@
                   <Icon v-if="dlqSortKey === 'failed_rule'" :name="dlqSortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
                 </th>
                 <th>Error Type</th>
-                <th class="sortable-th" @click="toggleDlqSort('severity')">
-                  Severity
-                  <Icon v-if="dlqSortKey === 'severity'" :name="dlqSortAsc ? 'heroicons:chevron-up-20-solid' : 'heroicons:chevron-down-20-solid'" class="sort-ic" />
-                </th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -211,6 +211,11 @@
                 <td class="col-status">
                   <span class="resolved-pill" :class="{ 'resolved-pill--done': entry.resolved }">
                     {{ entry.resolved ? '✓ Resolved' : 'Open' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="severity-pill" :class="'severity-pill--' + (entry.severity || '')">
+                    {{ entry.severity || '—' }}
                   </span>
                 </td>
                 <td>{{ entry.afe_number }}</td>
@@ -230,11 +235,6 @@
                 <td class="mono-cell">{{ entry.source_file || '—' }}</td>
                 <td>{{ entry.failed_rule || '—' }}</td>
                 <td>{{ entry.error_type || '—' }}</td>
-                <td>
-                  <span class="severity-pill" :class="'severity-pill--' + (entry.severity || '')">
-                    {{ entry.severity || '—' }}
-                  </span>
-                </td>
                 <td>{{ entry.failure_action || '—' }}</td>
               </tr>
             </tbody>
@@ -308,37 +308,8 @@ const store = useAfeStore()
 const tabs = ['Overview', 'Raw Data', 'Issue'] as const
 const activeTab = ref<typeof tabs[number]>('Overview')
 
-/* ── Curated Data tab: raw long-format rows ──────────── */
-interface CuratedRawRow {
-  id: number
-  afe_number: string
-  parameter_name: string
-  sub_parameter: string | null
-  value: string | null
-  unit: string | null
-  validation_status: string | null
-  notes: string | null
-  filename: string | null
-  json_path: string | null
-  reference_context: string | null
-  pages: string | null
-}
-const curatedRawRows = ref<CuratedRawRow[]>([])
-const loadingExtra = ref(false)
-
-async function fetchCuratedRaw() {
-  loadingExtra.value = true
-  try {
-    curatedRawRows.value = await $fetch<CuratedRawRow[]>('/api/afe/curated')
-  } catch (e) {
-    console.error('Failed to load curated raw rows:', e)
-  } finally {
-    loadingExtra.value = false
-  }
-}
-
 async function refreshAll() {
-  await Promise.all([store.fetchAll(), fetchCuratedRaw()])
+  await store.fetchAll()
 }
 
 onMounted(() => {
@@ -390,7 +361,7 @@ function toggleCuratedSort(key: string) {
 
 const filteredSortedCurated = computed(() => {
   const q = search.value.toLowerCase().trim()
-  let list = curatedRawRows.value
+  let list = store.curatedRows
   if (q) {
     list = list.filter(row =>
       [row.afe_number, row.parameter_name, row.sub_parameter, row.value, row.unit,
@@ -615,25 +586,10 @@ async function confirmDeleteRow() {
 .tab-fade-leave-to { opacity: 0; transform: translateY(-8px); }
 
 /* Table card */
-.card { position: relative; background: #fff; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.03); padding: 28px 48px; margin-bottom: 24px; overflow: hidden; }
+.card { position: relative; background: #fff; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.03); padding: 28px 48px; margin-bottom: 24px; overflow: hidden; border: 1px solid #989696}
 
 /* Gradient border via pseudo-element mask — same technique as .sidebar-card in Sidebar.vue */
-.table-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 24px;
-  padding: 1.5px;
-  background: var(--platform);
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.4;
-}
+
 .table-card > * { position: relative; z-index: 1; }
 
 .table-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 12px; flex-wrap: wrap; }
@@ -641,21 +597,21 @@ async function confirmDeleteRow() {
 .btn-sm { padding: 6px 12px; font-size: 11.5px; }
 .search-wrap { position: relative; flex: 1; max-width: 400px; }
 .search-ic { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: #94a3b8; }
-.search-input { width: 100%; padding: 10px 14px 10px 38px; border: 1px solid #e2e8f0; border-radius: 12px; font-family: 'Inter'; font-size: 13.5px; color: #1e293b; background: #fcfcfd; outline: none; transition: border .2s; }
+.search-input { width: 100%; padding: 10px 14px 10px 38px; border: 1px solid #989696; border-radius: 12px; font-family: 'Inter'; font-size: 13.5px; color: #1e293b; background: #fcfcfd; outline: none; transition: border .2s; }
 .search-input:focus { border-color: #fca5a5; }
 .search-input::placeholder { color: #cbd5e1; }
 .result-count { font-family: 'Inter'; font-size: 12px; font-weight: 600; color: #94a3b8; }
-.filter-select { padding: 7px 30px 7px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-family: 'Inter'; font-size: 12.5px; font-weight: 600; color: #475569; background: #fcfcfd; cursor: pointer; outline: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2394a3b8'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; background-size: 16px; }
-.filter-select:focus { border-color: #fca5a5; }
+.filter-select { padding: 7px 30px 7px 12px; border: 1px solid #989696; border-radius: 10px; font-family: 'Inter'; font-size: 12.5px; font-weight: 600; color: #475569; background: #fcfcfd; cursor: pointer; outline: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2394a3b8'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; background-size: 16px; }
+.filter-select:focus { border-color: #989696; }
 .loading-note { font-family: 'Inter'; font-size: 13px; color: #94a3b8; padding: 20px 0; text-align: center; }
 
 .table-scroll { overflow-x: auto; margin: 0 -28px; padding: 0 28px; }
-.repo-table { width: auto; min-width: 100%; border-collapse: collapse; table-layout: auto; }
-.repo-table th { text-align: left; font-family: 'Inter'; font-size: 10.5px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: #94a3b8; padding: 0 6px 8px; border-bottom: 2px solid #f1f5f9; white-space: nowrap; width: 1%; }
+.repo-table { width: auto; min-width: 100%; border-collapse: collapse; table-layout: auto; border:#989696 2px solid;}
+.repo-table th { text-align: left; font-family: 'Inter'; font-size: 10.5px; border:#989696 1px solid;font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: #94a3b8; padding: 0 6px 8px; border-bottom: 2px solid #989696; white-space: nowrap; width: 1%; }
 .sortable-th { cursor: pointer; user-select: none; }
 .sortable-th:hover { color: #ef4444; }
 .sort-ic { width: 14px; height: 14px; vertical-align: middle; margin-left: 2px; }
-.repo-table td { padding: 9px 6px; border-bottom: 1px solid #f8fafc; font-size: 13px; color: #1e293b; white-space: nowrap; position: relative; width: 1%; }
+.repo-table td { padding: 9px 6px; border:#989696 1px solid; font-size: 13px; color: #1e293b; white-space: nowrap; position: relative; width: 1%; }
 .repo-table td.notes-cell { white-space: normal; max-width: 280px; min-width: 180px; }
 .repo-table td.mono-cell { font-family: 'Inter', monospace; font-size: 11.5px; color: #64748b; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .clickable-row { cursor: pointer; }
@@ -674,13 +630,11 @@ async function confirmDeleteRow() {
 .status-pill--fail { background: #fef2f2; color: #b91c1c; }
 .status-pill--warn, .status-pill--warning { background: #fffbeb; color: #b45309; }
 
-/* DLQ tab: severity pill + row tint */
+/* Issue tab: severity pill + row tint */
 .severity-pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; letter-spacing: .3px; text-transform: capitalize; }
 .severity-pill--error { background: #fef2f2; color: #b91c1c; }
 .severity-pill--info { background: #f0f9ff; color: #0369a1; }
 .severity-pill--warning { background: #fffbeb; color: #b45309; }
-.dlq-row--error td:first-child + td { box-shadow: inset 3px 0 0 0 #ef4444; }
-.dlq-row--info td:first-child + td { box-shadow: inset 3px 0 0 0 #38bdf8; }
 .dlq-row--warning td:first-child + td { box-shadow: inset 3px 0 0 0 #f59e0b; }
 .dlq-row--resolved { opacity: .5; }
 

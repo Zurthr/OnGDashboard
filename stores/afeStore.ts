@@ -37,9 +37,25 @@ export interface DlqEntry {
   resolved_at: string | null
 }
 
+export interface CuratedRawRow {
+  id: number
+  afe_number: string
+  parameter_name: string
+  sub_parameter: string | null
+  value: string | null
+  unit: string | null
+  validation_status: string | null
+  notes: string | null
+  filename: string | null
+  json_path: string | null
+  reference_context: string | null
+  pages: string | null
+}
+
 interface AfeState {
   rows: Row[]
   dlqEntries: DlqEntry[]
+  curatedRows: CuratedRawRow[]
   loading: boolean
   error: string | null
   lastFetched: number | null
@@ -49,6 +65,7 @@ export const useAfeStore = defineStore('afe', {
   state: (): AfeState => ({
     rows: [],
     dlqEntries: [],
+    curatedRows: [],
     loading: false,
     error: null,
     lastFetched: null,
@@ -95,17 +112,19 @@ export const useAfeStore = defineStore('afe', {
   },
 
   actions: {
-    /** Fetch all records + all DLQ entries from the database. Call on page mount. */
+    /** Fetch all records + all DLQ entries + all curated raw rows from the database. Call on page mount. */
     async fetchAll() {
       this.loading = true
       this.error = null
       try {
-        const [rows, dlqEntries] = await Promise.all([
+        const [rows, dlqEntries, curatedRows] = await Promise.all([
           $fetch<Row[]>('/api/afe'),
           $fetch<DlqEntry[]>('/api/afe/dlq'),
+          $fetch<CuratedRawRow[]>('/api/afe/curated'),
         ])
         this.rows = rows
         this.dlqEntries = dlqEntries
+        this.curatedRows = curatedRows
         this.lastFetched = Date.now()
       } catch (e: any) {
         this.error = e?.data?.statusMessage ?? e.message ?? 'Failed to load repository data.'

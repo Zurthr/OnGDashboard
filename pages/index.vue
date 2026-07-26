@@ -87,6 +87,42 @@
               <div class="chart-wrap"><VChart :option="waterDepthChart" autoresize style="height:260px" /></div>
             </section>
           </div>
+          <!-- <div class="charts-grid charts-grid--2col">
+            <section class="card chart-card">
+              <h3 class="chart-title">Topside Weight Distribution</h3>
+              <p class="chart-sub">Histogram of topside weight (MT)</p>
+              <div class="chart-wrap"><VChart :option="topsideWeightChart" autoresize style="height:260px" /></div>
+            </section>
+            <section class="card chart-card">
+              <h3 class="chart-title">Jacket Weight Distribution</h3>
+              <p class="chart-sub">Histogram of jacket weight (MT)</p>
+              <div class="chart-wrap"><VChart :option="jacketWeightChart" autoresize style="height:260px" /></div>
+            </section>
+          </div>
+          <div class="charts-grid charts-grid--2col">
+            <section class="card chart-card">
+              <h3 class="chart-title">Piling Weight Distribution</h3>
+              <p class="chart-sub">Histogram of piling weight (MT)</p>
+              <div class="chart-wrap"><VChart :option="pilingWeightChart" autoresize style="height:260px" /></div>
+            </section>
+            <section class="card chart-card">
+              <h3 class="chart-title">Impurity Levels</h3>
+              <p class="chart-sub">H₂S, CO₂, and Hg (numeric records only)</p>
+              <div class="chart-wrap"><VChart :option="impurityChart" autoresize style="height:280px" /></div>
+            </section>
+          </div>
+          <div class="charts-grid charts-grid--2col">
+            <section class="card chart-card">
+              <h3 class="chart-title">Platforms by Number of Legs</h3>
+              <p class="chart-sub">Count per leg configuration</p>
+              <div class="chart-wrap"><VChart :option="legsChart" autoresize style="height:260px" /></div>
+            </section>
+            <section class="card chart-card">
+              <h3 class="chart-title">Platforms by Number of Slots</h3>
+              <p class="chart-sub">Well-slot capacity distribution</p>
+              <div class="chart-wrap"><VChart :option="slotsChart" autoresize style="height:260px" /></div>
+            </section>
+          </div> -->
           <div class="charts-grid charts-grid--3col">
             <section class="card chart-card">
               <h3 class="chart-title">Topside Weight Distribution</h3>
@@ -106,11 +142,6 @@
           </div>
           <div class="charts-grid charts-grid--3col">
             <section class="card chart-card">
-              <h3 class="chart-title">Impurity Levels</h3>
-              <p class="chart-sub">H₂S, CO₂, and Hg (numeric records only)</p>
-              <div class="chart-wrap"><VChart :option="impurityChart" autoresize style="height:280px" /></div>
-            </section>
-            <section class="card chart-card">
               <h3 class="chart-title">Platforms by Number of Legs</h3>
               <p class="chart-sub">Count per leg configuration</p>
               <div class="chart-wrap"><VChart :option="legsChart" autoresize style="height:260px" /></div>
@@ -119,6 +150,11 @@
               <h3 class="chart-title">Platforms by Number of Slots</h3>
               <p class="chart-sub">Well-slot capacity distribution</p>
               <div class="chart-wrap"><VChart :option="slotsChart" autoresize style="height:260px" /></div>
+            </section>
+            <section class="card chart-card">
+              <h3 class="chart-title">Impurity Levels</h3>
+              <p class="chart-sub">H₂S, CO₂, and Hg (numeric records only)</p>
+              <div class="chart-wrap"><VChart :option="impurityChart" autoresize style="height:280px" /></div>
             </section>
           </div>
         </div>
@@ -403,7 +439,7 @@ const resolvedIssueCount = computed(() => store.dlqEntries.filter(d => d.resolve
 
 /* Scorecard */
 .scorecard-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.sc-card { background: #fff; border-radius: 20px; margin-bottom: 24px; padding: 15px 15px; box-shadow: 0 4px 16px rgba(0,0,0,.04); position: relative; overflow: hidden; }
+.sc-card { background: #fff; border-radius: 10px; border:#989696 1px solid; margin-bottom: 24px; padding: 15px 15px; box-shadow: 0 4px 16px rgba(0,0,0,.04); position: relative; overflow: hidden; }
 .warn-card { background: #fffbeb; }
 .sc-label { font-family: 'Inter'; font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: #94a3b8; display: block; }
 .sc-val { font-size: 28px; font-weight: 800; color: #0f172a; margin-top: 6px; display: block; letter-spacing: -0.5px; }
@@ -414,7 +450,7 @@ const resolvedIssueCount = computed(() => store.dlqEntries.filter(d => d.resolve
 .charts-grid--2col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .charts-grid--3col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
 .chart-card { min-height: 320px; margin-bottom: 24px; }
-.card { position: relative; background: #fff; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.03); padding: 24px; overflow: hidden; }
+.card { position: relative; background: #fff; border-radius: 10px; border:#989696 1px solid; box-shadow: 0 8px 32px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.03); padding: 24px; overflow: hidden; }
 .chart-title { font-family: 'Poppins'; font-size: 15px; font-weight: 700; color: #0f172a; }
 .chart-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; margin-bottom: 14px; }
 .chart-wrap { width: 100%; }
