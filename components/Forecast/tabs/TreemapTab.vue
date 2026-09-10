@@ -1,5 +1,5 @@
 <template>
-  <div class="treemap-tab">
+  <div class="treemap-tab" :class="{ 'is-disabled': !hasComparation }" :title="!hasComparation ? 'Comparative values needed' : ''">
     <div class="treemap-card">
 
       <!-- Header -->
@@ -15,9 +15,13 @@
 
       <!-- Chart -->
       <div class="treemap-chart-wrapper">
+        <div v-if="!hasComparation" class="treemap-empty">
+          <Icon name="heroicons:chart-bar-square-20-solid" class="empty-icon" />
+          <span>Comparative values needed</span>
+        </div>
         <component
           :is="VChart"
-          v-if="VChart && hasData"
+          v-else-if="VChart && hasData"
           :option="treemapOption"
           class="treemap-echart"
           :autoresize="true"
@@ -32,18 +36,20 @@
       </div>
 
       <!-- Legend — swatch always visible, label reveals on hover -->
-      <div class="treemap-legend" v-if="mode === 'variance'">
-        <div class="legend-item" v-for="entry in legendEntries" :key="entry.label">
-          <span class="legend-swatch" :style="{ background: entry.color }"></span>
-          <span class="legend-label"><strong>{{ entry.label }}</strong> — {{ entry.desc }}</span>
+      <template v-if="hasComparation">
+        <div class="treemap-legend" v-if="mode === 'variance'">
+          <div class="legend-item" v-for="entry in legendEntries" :key="entry.label">
+            <span class="legend-swatch" :style="{ background: entry.color }"></span>
+            <span class="legend-label"><strong>{{ entry.label }}</strong> — {{ entry.desc }}</span>
+          </div>
         </div>
-      </div>
-      <div class="treemap-legend" v-else>
-        <div class="legend-item" v-for="entry in catLegendEntries" :key="entry.label">
-          <span class="legend-swatch" :style="{ background: entry.color }"></span>
-          <span class="legend-label"><strong>{{ entry.label }}</strong> — {{ entry.desc }}</span>
+        <div class="treemap-legend" v-else>
+          <div class="legend-item" v-for="entry in catLegendEntries" :key="entry.label">
+            <span class="legend-swatch" :style="{ background: entry.color }"></span>
+            <span class="legend-label"><strong>{{ entry.label }}</strong> — {{ entry.desc }}</span>
+          </div>
         </div>
-      </div>
+      </template>
 
     </div>
   </div>
@@ -52,13 +58,33 @@
 <script setup lang="ts">
 import { computed, shallowRef, onMounted } from 'vue'
 import { useVedaStore } from '~/stores/vedaStore'
+import { usePlatformVedaStore } from '~/stores/platformVedaStore'
+import { useSubseaVedaStore } from '~/stores/subseaVedaStore'
+import { useFpsoVedaStore } from '~/stores/fpsoVedaStore'
+import { useRoute } from 'vue-router'
 
 // ── Props ─────────────────────────────────────────────────────────────────
 const props = withDefaults(defineProps<{
   mode?: 'variance' | 'baseline' | 'forecast'
 }>(), { mode: 'variance' })
 
-const store = useVedaStore()
+const route = useRoute()
+
+const store = computed(() => {
+  if (route.path.startsWith('/platform')) return usePlatformVedaStore()
+  if (route.path.startsWith('/subsea')) return useSubseaVedaStore()
+  if (route.path.startsWith('/fpso')) return useFpsoVedaStore()
+  return useVedaStore()
+}).value
+
+const hasComparation = computed(() => {
+  const keys = Object.keys(store.comparationInputs || {})
+  if (keys.length === 0) return false
+  return store.componentFindings.every(c => {
+    const val = store.comparationInputs[c.costType]
+    return val !== undefined && val !== null && (val as any) !== ''
+  })
+})
 
 // ── Lazy ECharts load ─────────────────────────────────────────────────────
 const VChart = shallowRef<any>(null)
@@ -156,10 +182,14 @@ const treemapOption = computed(() => {
   const mode = props.mode
 
   const items = store.componentFindings.map(f => {
+    const compVal = Number(store.comparationInputs[f.costType]) || 0
+    const absVar = compVal - f.baseline
+    const pctDev = f.baseline === 0 ? 0 : Number(((absVar / f.baseline) * 100).toFixed(2))
+
     const abbr       = getAbbreviation(f.costType)
-    const isIncrease = f.absoluteVariance >= 0
+    const isIncrease = absVar >= 0
     const direction  = isIncrease ? 'Increase ▲' : 'Decrease ▼'
-    const contribStr = `${f.contributionRatio > 0 ? '+' : ''}${f.contributionRatio.toFixed(2)}%`
+    const contribStr = `${pctDev > 0 ? '+' : ''}${pctDev.toFixed(2)}%`
 
     // Value and color driven by mode
     let value: number
@@ -171,17 +201,17 @@ const treemapOption = computed(() => {
       value      = f.baseline
       color      = CAT_PALETTE[abbr] ?? CAT_PALETTE.OTH
       labelLine2 = fmt(f.baseline)
-      labelLine3 = fmtFull(f.baseline).replace('US', '').replace('$', '$') // compact
+      labelLine3 = fmtFull(f.baseline).replace('US', '').replace('$', '$')
     } else if (mode === 'forecast') {
-      value      = f.forecast
+      value      = compVal
       color      = CAT_PALETTE[abbr] ?? CAT_PALETTE.OTH
-      labelLine2 = fmt(f.forecast)
-      labelLine3 = fmt(f.absoluteVariance) + ' var'
+      labelLine2 = fmt(compVal)
+      labelLine3 = fmt(absVar) + ' var'
     } else {
       // variance (default)
-      value      = f.forecast
-      color      = getVarianceColor(f.isDominantDriver, isIncrease, Math.abs(f.contributionRatio))
-      labelLine2 = fmt(f.absoluteVariance)
+      value      = compVal
+      color      = getVarianceColor(f.isDominantDriver, isIncrease, Math.abs(pctDev))
+      labelLine2 = fmt(absVar)
       labelLine3 = contribStr
     }
 
@@ -189,10 +219,10 @@ const treemapOption = computed(() => {
       name: f.costType,
       value,
       _abbr: abbr,
-      _variance: f.absoluteVariance,
+      _variance: absVar,
       _baseline: f.baseline,
-      _forecast: f.forecast,
-      _pctDev: f.percentageDeviation,
+      _forecast: compVal,
+      _pctDev: pctDev,
       _direction: direction,
       _contribStr: contribStr,
       itemStyle: { color, borderColor: '#ffffff', borderWidth: 2 },
@@ -228,7 +258,7 @@ const treemapOption = computed(() => {
           <div style="font-family:'Inter',sans-serif;font-size:12px;padding:6px;line-height:1.8;min-width:220px;">
             <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:6px;border-bottom:1px solid #f1f5f9;padding-bottom:4px;">${d.name}</div>
             <div><span style="color:#64748b;">Baseline:</span> <strong>${fmtFull(d._baseline)}</strong></div>
-            <div><span style="color:#64748b;">Forecast:</span> <strong>${fmtFull(d._forecast)}</strong></div>
+            <div><span style="color:#64748b;">Comparation:</span> <strong>${fmtFull(d._forecast)}</strong></div>
             <div><span style="color:#64748b;">Variance:</span> <strong style="color:${varColor};">${increase ? '+' : ''}${fmtFull(d._variance)}</strong></div>
             <div><span style="color:#64748b;">Deviation:</span> <strong style="color:${varColor};">${d._pctDev > 0 ? '+' : ''}${d._pctDev}%</strong></div>
             <div><span style="color:#64748b;">Contribution:</span> <strong>${d._contribStr}</strong></div>
@@ -259,7 +289,17 @@ const treemapOption = computed(() => {
 </script>
 
 <style scoped>
-.treemap-tab { width: 100%; }
+.treemap-tab {
+  width: 100%;
+  transition: opacity 0.2s ease;
+}
+
+.treemap-tab.is-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  filter: grayscale(0.8);
+  cursor: not-allowed;
+}
 
 /* ── Card — fixed 480px ──────────────────────────────────── */
 .treemap-card {
@@ -318,14 +358,13 @@ const treemapOption = computed(() => {
   align-items: center;
   gap: 5px;
   cursor: default;
-  /* clip overflow so text expansion doesn't shift layout */
   max-width: 18px;
   overflow: hidden;
   transition: max-width 0.25s ease;
 }
 
 .legend-item:hover {
-  max-width: 280px; /* wide enough for any label */
+  max-width: 280px;
 }
 
 .legend-swatch {

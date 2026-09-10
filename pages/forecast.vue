@@ -1,5 +1,5 @@
 <template>
-  <ForecastStickyNav />
+  <BetaForecastStickyNav />
   <div class="container">
     <GlanceScorecard />
     <LocationMap />
@@ -10,17 +10,18 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, provide } from 'vue'
 import { useVedaStore } from '~/stores/vedaStore'
-import GlanceScorecard from '~/components/Forecast/GlanceScorecard.vue'
-import LocationMap from '~/components/Forecast/LocationMap.vue'
-import CompareResults from '~/components/Forecast/CompareResults.vue'
-import AriInsights from '~/components/Forecast/AriInsights.vue'
-import DevTools from '~/components/Forecast/DevTools.vue'
+import GlanceScorecard from '~/components/BetaForecast/GlanceScorecard.vue'
+import LocationMap from '~/components/BetaForecast/LocationMap.vue'
+import CompareResults from '~/components/BetaForecast/CompareResults.vue'
+import AriInsights from '~/components/BetaForecast/AriInsights.vue'
+import DevTools from '~/components/BetaForecast/DevTools.vue'
 
 import { useRoute } from 'vue-router'
 
 const store = useVedaStore()
+provide('forecastStore', store)
 const route = useRoute()
 
 onMounted(async () => {

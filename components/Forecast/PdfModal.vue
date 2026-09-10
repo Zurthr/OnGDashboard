@@ -143,12 +143,12 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useVedaStore } from '~/stores/vedaStore'
+import { useForecastStore } from '~/composables/useForecastStore'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', val: boolean): void }>()
 
-const store = useVedaStore()
+const store = useForecastStore()
 const generating = ref(false)
 const summaryType = ref<'narrative' | 'insights'>('narrative')
 

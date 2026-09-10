@@ -20,10 +20,38 @@
           <span class="nav-label">Dashboard</span>
         </NuxtLink>
 
-        <!-- Forecast & Compare -->
+        <!-- [OLD] Forecast -->
         <NuxtLink to="/forecast" class="nav-item" :class="{ 'nav-item--active': route.path === '/forecast' }">
           <img src="assets\icons\forecast.png" alt="Forecast" class="nav-icon">
-          <span class="nav-label">Forecast Eng.</span>
+          <span class="nav-label nav-label--muted">[OLD] Forecast</span>
+        </NuxtLink>
+
+        <!-- Forecast -->
+        <NuxtLink to="/platform" class="nav-item" :class="{ 'nav-item--active': route.path === '/platform' }">
+          <img src="assets\icons\forecast.png" alt="Forecast" class="nav-icon">
+          <span class="nav-label">Forecast</span>
+        </NuxtLink>
+      </div>
+
+      <!-- ── FPSO / FSO ─────────────────────────────── -->
+      <div class="nav-section">
+        <span class="nav-section-label">FPSO / FSO</span>
+
+        <!-- Forecast -->
+        <NuxtLink to="/fpso" class="nav-item" :class="{ 'nav-item--active': route.path === '/fpso' }">
+          <img src="assets\icons\forecast.png" alt="Forecast" class="nav-icon">
+          <span class="nav-label">Forecast</span>
+        </NuxtLink>
+      </div>
+
+      <!-- ── SUBSEA ──────────────────────────────────── -->
+      <div class="nav-section">
+        <span class="nav-section-label">Subsea</span>
+
+        <!-- Forecast -->
+        <NuxtLink to="/subsea" class="nav-item" :class="{ 'nav-item--active': route.path === '/subsea' }">
+          <img src="assets\icons\forecast.png" alt="Forecast" class="nav-icon">
+          <span class="nav-label">Forecast</span>
         </NuxtLink>
       </div>
 
@@ -32,14 +60,13 @@
         <span class="nav-section-label">General</span>
 
         <!-- Repository -->
-        <NuxtLink to="/repo" class="nav-item">
-          <img src="assets\icons\data.png" alt="Dashboard" class="nav-icon">
-
+        <NuxtLink to="/repo" class="nav-item" :class="{ 'nav-item--active': route.path === '/repo' }">
+          <img src="assets\icons\data.png" alt="Repository" class="nav-icon">
           <span class="nav-label">Repository</span>
         </NuxtLink>
 
         <!-- Extract Reports -->
-        <NuxtLink to="/extract" class="nav-item">
+        <NuxtLink to="/extract" class="nav-item" :class="{ 'nav-item--active': route.path === '/extract' }">
           <img src="assets\icons\extract.png" alt="Extract Reports" class="nav-icon">
           <span class="nav-label">Extract Reports</span>
         </NuxtLink>
@@ -75,7 +102,7 @@ const route = useRoute()
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.08),
     0 2px 6px  rgba(0, 0, 0, 0.04);
-  overflow: hidden;
+  overflow-y: auto;
   margin-left: -180px;
   z-index: 10000;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
@@ -227,5 +254,12 @@ const route = useRoute()
 
 .nav-item--active .nav-label {
   color: #0f172a;
+}
+
+/* ── Muted label (legacy / deprecated items) ─────────────────── */
+.nav-label--muted {
+  color: #94a3b8;
+  font-size: 12.5px;
+  font-weight: 500;
 }
 </style>

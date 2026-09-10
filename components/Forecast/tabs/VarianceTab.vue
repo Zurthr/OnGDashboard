@@ -1,5 +1,5 @@
 <template>
-  <div class="charts-row">
+  <div class="charts-row" :class="{ 'is-disabled': !hasComparation }" :title="!hasComparation ? 'Comparative values needed' : ''">
     <!-- Card 1: Forecast Variance -->
     <div class="chart-card">
       <div class="chart-card-header">
@@ -10,22 +10,23 @@
           </div>
           <span class="card-chart-subtitle">Visualization of the Forecast with Deviations marked. Hover for details.</span>
         </div>
-        <div class="card-header-right">
+        <div v-if="hasComparation" class="card-header-right">
           <Icon
-            :name="store.summaryFindings.percentageDeviationTotal >= 0 ? 'heroicons:arrow-trending-up-20-solid' : 'heroicons:arrow-trending-down-20-solid'"
-            :class="store.summaryFindings.percentageDeviationTotal >= 0 ? 'trend-up-icon' : 'trend-down-icon'"
+            :name="percentageDeviationTotal >= 0 ? 'heroicons:arrow-trending-up-20-solid' : 'heroicons:arrow-trending-down-20-solid'"
+            :class="percentageDeviationTotal >= 0 ? 'trend-up-icon' : 'trend-down-icon'"
           />
-          <span class="trend-value" :class="store.summaryFindings.percentageDeviationTotal >= 0 ? 'trend-up-text' : 'trend-down-text'">
-            {{ store.summaryFindings.percentageDeviationTotal >= 0 ? '+' : '' }}{{ store.summaryFindings.percentageDeviationTotal }}%
+          <span class="trend-value" :class="percentageDeviationTotal >= 0 ? 'trend-up-text' : 'trend-down-text'">
+            {{ percentageDeviationTotal >= 0 ? '+' : '' }}{{ percentageDeviationTotal }}%
           </span>
         </div>
       </div>
       <div class="chart-wrapper">
-        <component :is="VChart" v-if="VChart" :option="chartOption1" class="echart-instance" />
+        <component :is="VChart" v-if="VChart && hasComparation" :option="chartOption1" class="echart-instance" />
+        <div v-else-if="!hasComparation" class="chart-empty">Comparative values needed</div>
         <div v-else class="chart-loading">Loading chart…</div>
       </div>
       <!-- Legend -->
-      <div class="bar-legend">
+      <div v-if="hasComparation" class="bar-legend">
         <div class="legend-item"><span class="color-box" style="background:#D85A30"></span><span>Baseline</span></div>
         <div class="legend-item"><span class="color-box" style="background:#a3c96c"></span><span>Deviation</span></div>
       </div>
@@ -43,14 +44,15 @@
         </div>
       </div>
       <div class="chart-wrapper">
-        <component :is="VChart" v-if="VChart" :option="chartOption2" class="echart-instance" />
+        <component :is="VChart" v-if="VChart && hasComparation" :option="chartOption2" class="echart-instance" />
+        <div v-else-if="!hasComparation" class="chart-empty">Comparative values needed</div>
         <div v-else class="chart-loading">Loading chart…</div>
       </div>
-      <div class="waterfall-legend">
+      <div v-if="hasComparation" class="waterfall-legend">
         <div class="legend-item"><span class="color-box base-box"></span><span>Base</span></div>
         <div class="legend-item"><span class="color-box increase-box"></span><span>Increase</span></div>
         <div class="legend-item"><span class="color-box decrease-box"></span><span>Decrease</span></div>
-        <div class="legend-item"><span class="color-box forecast-box"></span><span>Forecast</span></div>
+        <div class="legend-item"><span class="color-box forecast-box"></span><span>Comparation</span></div>
       </div>
     </div>
 
@@ -66,10 +68,11 @@
         </div>
       </div>
       <div class="chart-wrapper">
-        <component :is="VChart" v-if="VChart" :option="chartOption3" class="echart-instance" />
+        <component :is="VChart" v-if="VChart && hasComparation" :option="chartOption3" class="echart-instance" />
+        <div v-else-if="!hasComparation" class="chart-empty">Comparative values needed</div>
         <div v-else class="chart-loading">Loading chart…</div>
       </div>
-      <div class="pie-legend">
+      <div v-if="hasComparation" class="pie-legend">
         <div v-for="item in pieLegendItems" :key="item.label" class="legend-item">
           <span class="color-box" :style="{ backgroundColor: item.color }"></span>
           <span>{{ item.label }}</span>
@@ -82,8 +85,48 @@
 <script setup lang="ts">
 import { computed, shallowRef, onMounted } from 'vue'
 import { useVedaStore } from '~/stores/vedaStore'
+import { usePlatformVedaStore } from '~/stores/platformVedaStore'
+import { useSubseaVedaStore } from '~/stores/subseaVedaStore'
+import { useFpsoVedaStore } from '~/stores/fpsoVedaStore'
+import { useRoute } from 'vue-router'
 
-const store = useVedaStore()
+const route = useRoute()
+
+const store = computed(() => {
+  if (route.path.startsWith('/platform')) return usePlatformVedaStore()
+  if (route.path.startsWith('/subsea')) return useSubseaVedaStore()
+  if (route.path.startsWith('/fpso')) return useFpsoVedaStore()
+  return useVedaStore()
+}).value
+
+const getComparationValue = (costType: string): number | null => {
+  const val = store.comparationInputs[costType]
+  if (val === undefined || val === null || (val as any) === '') return null
+  return Number(val)
+}
+
+const hasComparation = computed(() => {
+  const keys = Object.keys(store.comparationInputs || {})
+  if (keys.length === 0) return false
+  return store.componentFindings.every(c => getComparationValue(c.costType) !== null)
+})
+
+const comparationTotal = computed(() => {
+  if (!hasComparation.value) return 0
+  return store.componentFindings.reduce((sum, c) => {
+    return sum + (getComparationValue(c.costType) || 0)
+  }, 0)
+})
+
+const varianceTotal = computed(() => {
+  if (!hasComparation.value) return 0
+  return comparationTotal.value - store.summaryFindings.baselineTotal
+})
+
+const percentageDeviationTotal = computed(() => {
+  if (!hasComparation.value || store.summaryFindings.baselineTotal === 0) return 0
+  return Number(((varianceTotal.value / store.summaryFindings.baselineTotal) * 100).toFixed(2))
+})
 
 // ── Lazy-load ECharts (client only) ──────────────────────────────────────
 const VChart = shallowRef<any>(null)
@@ -91,7 +134,6 @@ const VChart = shallowRef<any>(null)
 onMounted(async () => {
   if (!process.client) return
   try {
-    // vue-echarts v6 requires explicit registration of chart types + components
     const echarts = await import('echarts/core')
     if (process.client) {
       (window as any).echarts = echarts
@@ -139,7 +181,9 @@ const getCategoryData = () => {
   store.componentFindings.forEach(f => {
     const abb = getAbbreviation(f.costType) as CatKey
     if (abb in result) {
-      result[abb] = { baseline: f.baseline, forecast: f.forecast, variance: f.absoluteVariance }
+      const compVal = getComparationValue(f.costType) || 0
+      const varVal = compVal - f.baseline
+      result[abb] = { baseline: f.baseline, forecast: compVal, variance: varVal }
     }
   })
   return result
@@ -163,7 +207,7 @@ const chartOption1 = computed(() => {
             <strong style="color:#0f172a;font-size:12px;margin-bottom:4px;display:inline-block;">Category: ${params[0].name}</strong><br/>
             <span style="color:#D85A30;font-weight:600;">Baseline:</span> $${fmt(base)}<br/>
             <span style="color:#a3c96c;font-weight:600;">Deviation:</span> $${fmt(dev)}<br/>
-            <span style="color:#475569;font-weight:600;">Forecast:</span> $${fmt(base + dev)}
+            <span style="color:#475569;font-weight:600;">Comparation:</span> $${fmt(base + dev)}
           </div>`
       },
     },
@@ -194,9 +238,9 @@ const chartOption1 = computed(() => {
 const getWaterfallData = () => {
   const data = getCategoryData()
   const cats: CatKey[] = ['PL', 'PF', 'DS', 'SUB', 'C&F', 'GS']
-  const names = ['Base', ...cats, 'Forecast']
+  const names = ['Base', ...cats, 'Comparation']
   const baseVal = store.summaryFindings.baselineTotal
-  const forecastVal = store.summaryFindings.forecastTotal
+  const forecastVal = comparationTotal.value
   const minY = Math.floor(Math.min(baseVal, forecastVal) / 1_000_000 - 1) * 1_000_000
 
   const placeholder: number[] = [minY]
@@ -232,7 +276,7 @@ const chartOption2 = computed(() => {
         const base = wf.placeholder[params[0].dataIndex]
         const heightVal = params[1].value
         if (name === 'Base') return `<strong style="color:#fb923c;">Base:</strong> $${fmt(base + heightVal)}`
-        if (name === 'Forecast') return `<strong style="color:#fca5a5;">Forecast:</strong> $${fmt(base + heightVal)}`
+        if (name === 'Comparation') return `<strong style="color:#fca5a5;">Comparation:</strong> $${fmt(base + heightVal)}`
         const dev = getCategoryData()[name as CatKey]?.variance ?? 0
         const sign = dev >= 0 ? '+' : ''
         const col = dev >= 0 ? '#ef4444' : '#a3c96c'
@@ -281,7 +325,7 @@ const chartOption3 = computed(() => {
     tooltip: {
       trigger: 'item',
       formatter: (params: any) =>
-        `<div style="font-family:var(--font-family);font-size:11px;padding:4px;line-height:1.5;"><strong style="color:#0f172a;font-size:12px;display:inline-block;">${params.name}</strong><br/>Forecast: $${fmt(params.value)}<br/>Proportion: <strong>${params.percent}%</strong></div>`,
+        `<div style="font-family:var(--font-family);font-size:11px;padding:4px;line-height:1.5;"><strong style="color:#0f172a;font-size:12px;display:inline-block;">${params.name}</strong><br/>Comparation: $${fmt(params.value)}<br/>Proportion: <strong>${params.percent}%</strong></div>`,
     },
     series: [{
       type: 'pie', radius: '75%', center: ['50%', '50%'],
@@ -309,6 +353,14 @@ const pieLegendItems = [
   flex-direction: row;
   gap: 16px;
   width: 100%;
+  transition: opacity 0.2s ease;
+}
+
+.charts-row.is-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  filter: grayscale(0.8);
+  cursor: not-allowed;
 }
 
 .chart-card {
@@ -323,7 +375,6 @@ const pieLegendItems = [
   min-width: 0;
 }
 
-/* Pie is compact — no need for the same width as bar charts */
 .pie-chart-card {
   flex: 0 0 220px;
   width: 220px;
@@ -358,7 +409,8 @@ const pieLegendItems = [
 
 .chart-wrapper { width: 100%; flex: 1; }
 .echart-instance { width: 100%; height: 220px; }
-.chart-loading { height: 220px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 13px; }
+.chart-loading,
+.chart-empty { height: 220px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 13px; font-weight: 500; }
 
 /* Legends */
 .bar-legend,

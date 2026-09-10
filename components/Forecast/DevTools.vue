@@ -16,8 +16,23 @@
               <h3 class="table-title">Scenario Cost Category Breakdown</h3>
               <p class="table-subtitle">Detailed side-by-side comparison of baseline and forecast values</p>
             </div>
-            <div v-if="store.selectedScenarioId" class="scenario-badge">
-              Scenario #{{ store.selectedScenarioId }}
+            <div class="scenario-select-wrap">
+              <label for="dev-scenario-select" class="scenario-select-label">Scenario:</label>
+              <div class="dropdown-wrap">
+                <select
+                  id="dev-scenario-select"
+                  class="scenario-dropdown-select"
+                  :value="store.selectedScenarioId"
+                  @change="onScenarioSelect"
+                  :disabled="store.loadingDetails || store.loadingScenarios"
+                >
+                  <option v-if="store.scenarios.length === 0" :value="null" disabled>No scenarios</option>
+                  <option v-for="id in store.scenarios" :key="id" :value="id">
+                    Scenario #{{ id }}
+                  </option>
+                </select>
+                <Icon name="heroicons:chevron-down-20-solid" class="dropdown-chevron" />
+              </div>
             </div>
           </div>
           
@@ -153,10 +168,10 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useVedaStore } from '~/stores/vedaStore'
+import { useForecastStore } from '~/composables/useForecastStore'
 import { useFormatters } from '~/composables/useFormatters'
 
-const store = useVedaStore()
+const store = useForecastStore()
 const { formatCurrency } = useFormatters()
 
 const devToolsOpen = ref(false)
@@ -176,6 +191,14 @@ const copyJson = async () => {
     }, 2000)
   } catch (err) {
     console.error('Failed to copy VEDA JSON:', err)
+  }
+}
+
+const onScenarioSelect = async (e: Event) => {
+  const target = e.target as HTMLSelectElement
+  const val = target.value ? Number(target.value) : null
+  if (val !== null && !isNaN(val)) {
+    await store.selectScenario(val)
   }
 }
 </script>
@@ -273,6 +296,57 @@ const copyJson = async () => {
 .table-subtitle {
   font-size: 14px;
   color: #64748b;
+}
+
+.scenario-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scenario-select-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dropdown-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.scenario-dropdown-select {
+  appearance: none;
+  padding: 7px 32px 7px 14px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 99px;
+  background-color: #f8fafc;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.scenario-dropdown-select:hover {
+  border-color: #10b981;
+}
+
+.scenario-dropdown-select:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+}
+
+.dropdown-chevron {
+  position: absolute;
+  right: 10px;
+  width: 14px;
+  height: 14px;
+  color: #94a3b8;
+  pointer-events: none;
 }
 
 .scenario-badge {

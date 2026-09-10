@@ -45,6 +45,8 @@ interface VedaState {
   loadingDetails: boolean
   error: string | null
   computedJson: any | null
+  comparationInputs: Record<string, number | null>
+  isComparationModalOpen: boolean
   // Narrative states
   narrative: string | null
   loadingNarrative: boolean
@@ -66,6 +68,8 @@ export const useVedaStore = defineStore('vedaStore', {
       absoluteVarianceTotal: 3071295.00,
       percentageDeviationTotal: 5.41
     },
+    comparationInputs: {},
+    isComparationModalOpen: false,
     componentFindings: [
       {
         costType: "Substructure Cost",
@@ -312,6 +316,18 @@ export const useVedaStore = defineStore('vedaStore', {
     setNavParams(params: Partial<NavParams>) {
       this.navParams = { ...this.navParams, ...params }
       this.calcDone = false
+    },
+
+    setComparationInputs(inputs: Record<string, number | null>) {
+      this.comparationInputs = { ...inputs }
+    },
+
+    openComparationModal() {
+      this.isComparationModalOpen = true
+    },
+
+    closeComparationModal() {
+      this.isComparationModalOpen = false
     },
 
     // Confirm calculation was run — unlocks PDF button

@@ -58,42 +58,39 @@
 
       <div class="nav-divider"></div>
 
-      <!-- ── COMPACT SLASH GROUP: Depth / P.Length / Topside / Jacket ── -->
-      <div class="nav-group slash-group">
+      <!-- ── INPUT FIELDS: Depth / P.Length / Topside / Jacket (Individual Bubbles) ── -->
+      <div class="nav-group input-bubbles-group">
         <input
           id="nav-depth"
           type="number"
-          class="slash-input"
+          class="nav-input-bubble"
           placeholder="Depth"
           min="0"
           :value="store.navParams.waterDepth ?? ''"
           @input="onNumInput('waterDepth', $event)"
         />
-        <span class="slash-sep">/</span>
         <input
           id="nav-length"
           type="number"
-          class="slash-input"
+          class="nav-input-bubble"
           placeholder="P.Length"
           min="0"
           :value="store.navParams.pipeLength ?? ''"
           @input="onNumInput('pipeLength', $event)"
         />
-        <span class="slash-sep">/</span>
         <input
           id="nav-topside"
           type="number"
-          class="slash-input"
+          class="nav-input-bubble"
           placeholder="Topside"
           min="0"
           :value="store.navParams.topside ?? ''"
           @input="onNumInput('topside', $event)"
         />
-        <span class="slash-sep">/</span>
         <input
           id="nav-jacket"
           type="number"
-          class="slash-input"
+          class="nav-input-bubble"
           placeholder="Jacket"
           min="0"
           :value="store.navParams.jacket ?? ''"
@@ -140,34 +137,6 @@
 
       <div class="nav-divider"></div>
 
-      <!-- ── SCENARIO SELECT ── -->
-      <div class="nav-group">
-        <div class="dropdown-wrap scenario-dropdown-wrap">
-          <select
-            id="nav-scenario"
-            class="nav-dropdown scenario-nav-select"
-            v-model="scenarioId"
-            @change="onScenarioChange"
-            :disabled="store.loadingDetails || store.loadingScenarios"
-          >
-            <option v-if="store.scenarios.length === 0" :value="null" disabled>No scenarios</option>
-            <option v-for="id in store.scenarios" :key="id" :value="id">
-              Scenario #{{ id }}
-            </option>
-          </select>
-          <Icon name="heroicons:chevron-down-20-solid" class="dropdown-chevron" />
-        </div>
-
-        <!-- Loading spinner inside scenario group -->
-        <transition name="fade">
-          <div v-if="store.loadingDetails || store.loadingScenarios" class="nav-spinner-wrap">
-            <div class="nav-spinner"></div>
-          </div>
-        </transition>
-      </div>
-
-      <div class="nav-divider"></div>
-
       <!-- ── ACTION BUTTONS ── -->
       <div class="nav-group nav-actions">
         <button
@@ -202,12 +171,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useVedaStore } from '~/stores/vedaStore'
+import { useForecastStore } from '~/composables/useForecastStore'
 import PdfModal from '~/components/Forecast/PdfModal.vue'
 
 const showPdfModal = ref(false)
-const store = useVedaStore()
-const scenarioId = ref<number | null>(null)
+const store = useForecastStore()
 
 // ── CUSTOM CHECKBOX DROPDOWN LOGIC ──
 const dropdownRef = ref<HTMLElement | null>(null)
@@ -272,17 +240,6 @@ const handleClickOutside = (e: MouseEvent) => {
   }
 }
 
-// Keep local scenario in sync with store
-watch(() => store.selectedScenarioId, (val) => {
-  if (val !== null) scenarioId.value = val
-}, { immediate: true })
-
-const onScenarioChange = () => {
-  if (scenarioId.value !== null) {
-    store.selectScenario(scenarioId.value)
-  }
-}
-
 // ── INPUT HANDLERS ──────────────────────────────────────────────────────────
 const onNumInput = (field: 'waterDepth' | 'pipeLength' | 'topside' | 'jacket', e: Event) => {
   const raw = (e.target as HTMLInputElement).value
@@ -303,7 +260,7 @@ const onLocationChange = (e: Event) => {
 }
 
 // ── CALC GATE ───────────────────────────────────────────────────────────────
-// Calc is enabled when at least the key numeric fields have been filled
+// Calc is enabled when key numeric fields have been filled
 const canCalc = computed(() => {
   const p = store.navParams
   return (
@@ -314,7 +271,7 @@ const canCalc = computed(() => {
   )
 })
 
-const runCalc = () => {
+const runCalc = async () => {
   if (!canCalc.value) return
   store.runCalc()
 }
@@ -478,51 +435,50 @@ onBeforeUnmount(() => {
 }
 .year-select:hover { opacity: 0.85; }
 
-/* ─── SLASH GROUP ─────────────────────────────────────────── */
-.slash-group {
-  gap: 0;
+/* ─── INPUT BUBBLES GROUP ─────────────────────────────── */
+.input-bubbles-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-input-bubble {
+  width: 72px;
+  padding: 7px 6px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
   background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 99px;
-  padding: 0 10px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.slash-group:focus-within {
-  border-color: #fb923c;
-  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.12);
-  background: #fff;
-}
-
-.slash-input {
-  width: 58px;
-  padding: 7px 4px;
-  border: none;
-  background: transparent;
   font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   color: #334155;
   outline: none;
   text-align: center;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
   -moz-appearance: textfield;
 }
-.slash-input::-webkit-outer-spin-button,
-.slash-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-.slash-input::placeholder {
+.nav-input-bubble::-webkit-outer-spin-button,
+.nav-input-bubble::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.nav-input-bubble::placeholder {
   color: #94a3b8;
   font-family: 'Poppins', sans-serif;
   font-weight: 500;
   font-size: 11.5px;
 }
 
-.slash-sep {
-  font-size: 13px;
-  font-weight: 300;
-  color: #cbd5e1;
-  user-select: none;
-  padding: 0 1px;
+.nav-input-bubble:hover {
+  border-color: #94a3b8;
+}
+
+.nav-input-bubble:focus {
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.12);
+  background: #ffffff;
 }
 
 /* ─── CUSTOM YEARS DROPDOWN ───────────────────────────── */

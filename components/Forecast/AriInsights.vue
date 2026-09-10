@@ -10,8 +10,14 @@
 
       <!-- Content -->
       <div class="ari-content">
+        <!-- Waiting for input state -->
+        <div v-if="!hasComparation" class="ari-empty-state">
+          <Icon name="heroicons:information-circle-20-solid" class="empty-info-icon" />
+          <p>Please enter comparative values in <strong>Compare Results</strong> above to generate Ari's AI analysis.</p>
+        </div>
+
         <!-- Loading skeleton -->
-        <div v-if="store.loadingNarrative || store.loadingDetails" class="skeleton-wrapper">
+        <div v-else-if="store.loadingNarrative || store.loadingDetails" class="skeleton-wrapper">
           <div class="skeleton-bar animate-pulse" style="width: 100%; height: 16px;"></div>
           <div class="skeleton-bar animate-pulse" style="width: 97%; height: 16px;"></div>
           <div class="skeleton-bar animate-pulse" style="width: 94%; height: 16px;"></div>
@@ -26,12 +32,7 @@
         </div>
 
         <!-- Insights content -->
-        <div v-else-if="store.narrative || store.selectedScenarioId === 1" class="insights-text" v-html="formattedInsights"></div>
-
-        <!-- Empty state -->
-        <div v-else class="ari-empty-state">
-          <p>Select a scenario above to generate Ari's AI analysis.</p>
-        </div>
+        <div v-else-if="hasComparation" class="insights-text" v-html="formattedInsights"></div>
       </div>
     </div>
   </div>
@@ -40,22 +41,96 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useVedaStore } from '~/stores/vedaStore'
+import { usePlatformVedaStore } from '~/stores/platformVedaStore'
+import { useSubseaVedaStore } from '~/stores/subseaVedaStore'
+import { useFpsoVedaStore } from '~/stores/fpsoVedaStore'
+import { useRoute } from 'vue-router'
+import { useFormatters } from '~/composables/useFormatters'
 
-const store = useVedaStore()
+const route = useRoute()
+const { formatCurrency, getSeverityLabel } = useFormatters()
 
-// Format Ari insights with bold markers
+const store = computed(() => {
+  if (route.path.startsWith('/platform')) return usePlatformVedaStore()
+  if (route.path.startsWith('/subsea')) return useSubseaVedaStore()
+  if (route.path.startsWith('/fpso')) return useFpsoVedaStore()
+  return useVedaStore()
+}).value
+
+const getComparationValue = (costType: string): number | null => {
+  const val = store.comparationInputs[costType]
+  if (val === undefined || val === null || (val as any) === '') return null
+  return Number(val)
+}
+
+const hasComparation = computed(() => {
+  const keys = Object.keys(store.comparationInputs || {})
+  if (keys.length === 0) return false
+  return store.componentFindings.every(c => getComparationValue(c.costType) !== null)
+})
+
+const comparationTotal = computed(() => {
+  if (!hasComparation.value) return 0
+  return store.componentFindings.reduce((sum, c) => sum + (getComparationValue(c.costType) || 0), 0)
+})
+
+const varianceTotal = computed(() => {
+  if (!hasComparation.value) return 0
+  return comparationTotal.value - store.summaryFindings.baselineTotal
+})
+
+const percentageDeviation = computed(() => {
+  if (!hasComparation.value || store.summaryFindings.baselineTotal === 0) return 0
+  return Number(((varianceTotal.value / store.summaryFindings.baselineTotal) * 100).toFixed(2))
+})
+
+// Format Ari insights dynamically based on the input values
 const formattedInsights = computed(() => {
-  if (store.selectedScenarioId === 1) {
-    const text = `Total proposed cost of $59,794,395 exceeds the approved baseline of $56,723,100, reflecting an aggregate deviation of $3,071,295 or 5.41% at a LOW severity level. Pipeline Costs is identified as the dominant cost driver with a variance of $1,247,274 or 8.50% above its baseline, contributing 40.61% of the total aggregate deviation, though remaining within the normal historical range.
+  if (!hasComparation.value) return ''
 
-All other cost components, namely Substructure Cost (+4.20%), Deck Structure Cost (+4.20%), Production Facilities Cost (+5.00%), General Support Cost (+3.50%), and Certifications and Permits Costs (+2.00%), show reasonable deviations and do not require escalation action. The regulator is advised to request written justification from the contractor regarding the Pipeline Costs increase given its dominant contribution to total variance, though a comprehensive review is not required at this stage.`
-    return text.replace(/\n\n/g, '<br><br>')
+  if (store.narrative) {
+    return store.narrative
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n\n/g, '<br><br>')
   }
-  if (!store.narrative) return ''
-  // Wrap **text** in <strong> tags
-  return store.narrative
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n\n/g, '<br><br>')
+
+  const compTotalStr = formatCurrency(comparationTotal.value)
+  const baseTotalStr = formatCurrency(store.summaryFindings.baselineTotal)
+  const varTotalStr = formatCurrency(Math.abs(varianceTotal.value))
+  const pctStr = Math.abs(percentageDeviation.value).toFixed(2)
+  const isExceed = varianceTotal.value >= 0
+  const severityLabel = getSeverityLabel(percentageDeviation.value).toUpperCase()
+
+  // Find dominant driver based on inputs
+  const sortedComponents = store.componentFindings.map(c => {
+    const compVal = getComparationValue(c.costType) || 0
+    const varVal = compVal - c.baseline
+    const pct = c.baseline === 0 ? 0 : (varVal / c.baseline) * 100
+    return {
+      costType: c.costType,
+      baseline: c.baseline,
+      compVal,
+      varVal,
+      pct,
+      absVar: Math.abs(varVal)
+    }
+  }).sort((a, b) => b.absVar - a.absVar)
+
+  const topDriver = sortedComponents[0]
+  const topDriverName = topDriver ? topDriver.costType : 'Pipeline Costs'
+  const topDriverVarStr = topDriver ? formatCurrency(Math.abs(topDriver.varVal)) : '$0'
+  const topDriverPctStr = topDriver ? Math.abs(topDriver.pct).toFixed(2) : '0.00'
+
+  const paragraph1 = `Total proposed cost of ${compTotalStr} ${isExceed ? 'exceeds' : 'is below'} the approved baseline of ${baseTotalStr}, reflecting an aggregate deviation of ${varTotalStr} or ${pctStr}% at a ${severityLabel} severity level. ${topDriverName} is identified as the key cost driver with a variance of ${topDriverVarStr} or ${topDriverPctStr}% ${topDriver.varVal >= 0 ? 'above' : 'below'} its baseline.`
+
+  const otherItemsStr = sortedComponents.slice(1).map(c => {
+    const sign = c.varVal >= 0 ? '+' : '-'
+    return `${c.costType} (${sign}${Math.abs(c.pct).toFixed(2)}%)`
+  }).join(', ')
+
+  const paragraph2 = `All other cost components, namely ${otherItemsStr}, show reasonable deviations. The regulator is advised to review justification for major variances prior to final approval.`
+
+  return `${paragraph1}<br><br>${paragraph2}`
 })
 </script>
 
@@ -156,9 +231,18 @@ All other cost components, namely Substructure Cost (+4.20%), Deck Structure Cos
 }
 
 .ari-empty-state {
-  color: var(--color-text-muted);
+  color: #64748b;
   font-size: 14px;
-  text-align: center;
-  padding: 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 0;
+}
+
+.empty-info-icon {
+  width: 20px;
+  height: 20px;
+  color: #f43f5e;
 }
 </style>

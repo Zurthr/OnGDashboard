@@ -12,13 +12,16 @@
         </span>
       </div>
 
-      <!-- Card 2: Forecasted (USD) -->
+      <!-- Card 2: Comparation (USD) - Read-only display -->
       <div class="scorecard-card pink-card" style="min-width:164px">
-        <span class="card-label">Forecasted (USD)</span>
+        <span class="card-label">Comparation (USD)</span>
         <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
-        <span v-else class="card-val num-font">{{ formatCurrency(store.summaryFindings.forecastTotal) }}</span>
+        <span v-else class="card-val num-font">
+          {{ hasComparation ? formatCurrency(comparationTotal) : '-' }}
+        </span>
         <span v-if="!store.loadingDetails" class="card-subtitle">
-          <span class="subtext-bold num-font">{{ forecastCostPerFoot }}</span> <span class="subtext-unit">US$/ft</span>
+          <span class="subtext-bold num-font">{{ hasComparation ? comparationCostPerFoot : '-' }}</span>
+          <span class="subtext-unit"> US$/ft</span>
         </span>
       </div>
 
@@ -26,20 +29,25 @@
       <div class="scorecard-card variance-card" style="min-width:164px">
         <span class="card-label">Variance</span>
         <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
-        <span v-else class="card-val num-font">{{ formatCurrency(store.summaryFindings.absoluteVarianceTotal) }}</span>
+        <span v-else class="card-val num-font">
+          {{ hasComparation ? formatCurrency(varianceTotal) : '-' }}
+        </span>
         <span v-if="!store.loadingDetails" class="card-subtitle">
-          <span class="subtext-bold num-font">{{ varianceCostPerFoot }}</span> <span class="subtext-unit">US$/ft</span>
+          <span class="subtext-bold num-font">{{ hasComparation ? varianceCostPerFoot : '-' }}</span>
+          <span class="subtext-unit"> US$/ft</span>
         </span>
       </div>
 
-      <!-- Card 4: Deviation of -->
+      <!-- Card 4: % Deviation -->
       <div class="scorecard-card neutral-card">
         <span class="card-label">% Deviation</span>
         <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
-        <span v-else class="card-val num-font">{{ store.summaryFindings.percentageDeviationTotal }}%</span>
-        <div v-if="!store.loadingDetails" class="severity-badge-container">
-          <span class="severity-pill" :class="getSeverityBadgeClass(store.summaryFindings.percentageDeviationTotal)">
-            {{ getSeverityLabel(store.summaryFindings.percentageDeviationTotal) }}
+        <span v-else class="card-val num-font">
+          {{ hasComparation ? percentageDeviation + '%' : '-' }}
+        </span>
+        <div v-if="!store.loadingDetails && hasComparation" class="severity-badge-container">
+          <span class="severity-pill" :class="getSeverityBadgeClass(percentageDeviation)">
+            {{ getSeverityLabel(percentageDeviation) }}
           </span>
         </div>          
       </div>
@@ -49,10 +57,13 @@
         <span class="card-label">Dominant Driver</span>
         <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
         <template v-else>
-          <span class="card-val num-font">{{ dominantDriverRatio }}%</span>
+          <span class="card-val num-font">{{ hasComparation ? dominantDriverRatio + '%' : '-' }}</span>
           <span class="card-subtitle dominant-driver-names">
-            <template v-if="dominantDriverPrimary">{{ dominantDriverPrimary }}<span v-if="dominantDriverMoreCount > 0" class="driver-more"> + {{ dominantDriverMoreCount }} more</span></template>
-            <template v-else>None</template>
+            <template v-if="hasComparation && dominantDriverPrimary">
+              {{ dominantDriverPrimary }}
+              <span v-if="dominantDriverMoreCount > 0" class="driver-more"> + {{ dominantDriverMoreCount }} more</span>
+            </template>
+            <template v-else>-</template>
           </span>
         </template>
       </div>
@@ -62,7 +73,7 @@
         <span class="card-label">Historical Status</span>
         <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
         <template v-else>
-          <span class="card-val">{{ historicalStatusLabel }}</span>
+          <span class="card-val">{{ hasComparation ? historicalStatusLabel : '-' }}</span>
           <span class="card-subtitle">Range</span>
         </template>
       </div>
@@ -73,42 +84,92 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useVedaStore } from '~/stores/vedaStore'
+import { usePlatformVedaStore } from '~/stores/platformVedaStore'
+import { useSubseaVedaStore } from '~/stores/subseaVedaStore'
+import { useFpsoVedaStore } from '~/stores/fpsoVedaStore'
+import { useRoute } from 'vue-router'
 import { useFormatters } from '~/composables/useFormatters'
 
-const store = useVedaStore()
+const route = useRoute()
 const { formatCurrency, formatCostPerFoot, getSeverityLabel, getSeverityBadgeClass } = useFormatters()
 
+const store = computed(() => {
+  if (route.path.startsWith('/platform')) return usePlatformVedaStore()
+  if (route.path.startsWith('/subsea')) return useSubseaVedaStore()
+  if (route.path.startsWith('/fpso')) return useFpsoVedaStore()
+  return useVedaStore()
+}).value
+
 const pipeLength = computed(() => store.navParams.pipeLength)
+
+// Compute comparation total from store inputs
+const hasComparation = computed(() => {
+  const keys = Object.keys(store.comparationInputs || {})
+  if (keys.length === 0) return false
+  return store.componentFindings.every(c => {
+    const val = store.comparationInputs[c.costType]
+    return val !== undefined && val !== null && (val as any) !== ''
+  })
+})
+
+const comparationTotal = computed(() => {
+  if (!hasComparation.value) return 0
+  return store.componentFindings.reduce((sum, c) => {
+    const val = Number(store.comparationInputs[c.costType]) || 0
+    return sum + val
+  }, 0)
+})
+
+const varianceTotal = computed(() => {
+  if (!hasComparation.value) return 0
+  return comparationTotal.value - store.summaryFindings.baselineTotal
+})
+
+const percentageDeviation = computed(() => {
+  if (!hasComparation.value || store.summaryFindings.baselineTotal === 0) return 0
+  return Number(((varianceTotal.value / store.summaryFindings.baselineTotal) * 100).toFixed(2))
+})
 
 const baselineCostPerFoot = computed(() =>
   formatCostPerFoot(store.summaryFindings.baselineTotal, pipeLength.value)
 )
 
-const forecastCostPerFoot = computed(() =>
-  formatCostPerFoot(store.summaryFindings.forecastTotal, pipeLength.value)
+const comparationCostPerFoot = computed(() =>
+  formatCostPerFoot(comparationTotal.value, pipeLength.value)
 )
 
 const varianceCostPerFoot = computed(() =>
-  formatCostPerFoot(store.summaryFindings.absoluteVarianceTotal, pipeLength.value)
+  formatCostPerFoot(varianceTotal.value, pipeLength.value)
 )
 
 const formatCostTypeLabel = (costType: string) =>
   costType.replace(/ (Costs|Cost)/g, '')
 
-const dominantDriverComponents = computed(() =>
-  store.componentFindings
+const dominantDriverComponents = computed(() => {
+  if (!hasComparation.value) return []
+  return store.componentFindings
+    .map(c => {
+      const compVal = Number(store.comparationInputs[c.costType]) || 0
+      const absVar = compVal - c.baseline
+      return {
+        costType: c.costType,
+        absoluteVariance: absVar,
+        isDominantDriver: c.isDominantDriver
+      }
+    })
     .filter(c => c.isDominantDriver)
     .sort((a, b) => Math.abs(b.absoluteVariance) - Math.abs(a.absoluteVariance))
-)
+})
 
 const dominantDriverRatio = computed(() => {
+  if (!hasComparation.value) return 0
   const drivers = dominantDriverComponents.value
   if (drivers.length === 0) return 0
 
-  const totalAbsVariance = store.componentFindings.reduce(
-    (sum, c) => sum + Math.abs(c.absoluteVariance),
-    0,
-  )
+  const totalAbsVariance = store.componentFindings.reduce((sum, c) => {
+    const compVal = Number(store.comparationInputs[c.costType]) || 0
+    return sum + Math.abs(compVal - c.baseline)
+  }, 0)
   if (totalAbsVariance === 0) return 0
 
   const driverAbsVariance = drivers.reduce(
@@ -120,24 +181,22 @@ const dominantDriverRatio = computed(() => {
 })
 
 const dominantDriverPrimary = computed(() => {
+  if (!hasComparation.value) return ''
   if (dominantDriverComponents.value.length > 0) {
     return formatCostTypeLabel(dominantDriverComponents.value[0].costType)
   }
-
   const fromApi = store.computedJson?.dominantDrivers as string | undefined
   if (!fromApi || fromApi === 'None') return ''
-
   return formatCostTypeLabel(fromApi.split(', ')[0])
 })
 
 const dominantDriverMoreCount = computed(() => {
+  if (!hasComparation.value) return 0
   if (dominantDriverComponents.value.length > 1) {
     return dominantDriverComponents.value.length - 1
   }
-
   const fromApi = store.computedJson?.dominantDrivers as string | undefined
   if (!fromApi || fromApi === 'None') return 0
-
   return Math.max(0, fromApi.split(', ').length - 1)
 })
 

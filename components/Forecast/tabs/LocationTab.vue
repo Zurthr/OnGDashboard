@@ -12,9 +12,9 @@
 
 <script setup lang="ts">
 import { computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { useVedaStore } from '~/stores/vedaStore'
+import { useForecastStore } from '~/composables/useForecastStore'
 
-const store = useVedaStore()
+const store = useForecastStore()
 
 const locationsData = [
   { name: 'Natuna Sea',     lat:  4.0,  lng: 108.0, labelAlign: 'left',  coords: '4.0° N, 108.0° E' },
