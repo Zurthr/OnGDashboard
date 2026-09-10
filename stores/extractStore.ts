@@ -65,6 +65,30 @@ export const useExtractStore = defineStore('extract', () => {
   const doneCount = computed(() => files.value.filter(f => f.status === 'done').length)
   const allDone = computed(() => files.value.length > 0 && files.value.every(f => f.status === 'done'))
 
+  /* ── Duplicate AFE detection ────────────────────────────
+     Warns (does not block) when two or more files in the queue extracted to
+     the same AFE number — e.g. the same PDF accidentally uploaded twice, or
+     two different documents that happen to reference the same AFE. */
+  const duplicateAfeMap = computed(() => {
+    const map: Record<string, string[]> = {}
+    for (const f of files.value) {
+      const afe = f.result?.AFE_Extraction?.AFE_Number?.value
+      if (!afe || typeof afe !== 'string') continue
+      if (!map[afe]) map[afe] = []
+      map[afe].push(f.name)
+    }
+    return Object.fromEntries(Object.entries(map).filter(([, names]) => names.length > 1))
+  })
+
+  function getDuplicateWarning(f: QueuedFile): string | null {
+    const afe = f.result?.AFE_Extraction?.AFE_Number?.value
+    if (!afe || typeof afe !== 'string') return null
+    const group = duplicateAfeMap.value[afe]
+    if (!group) return null
+    const others = group.filter(name => name !== f.name)
+    return `Same AFE number (${afe}) as: ${others.join(', ')}`
+  }
+
   /* ── Persistence ───────────────────────────────────────
      Called explicitly from the page's onMounted (not run inside the
      store body) so it never executes during SSR, where localStorage
@@ -214,11 +238,55 @@ export const useExtractStore = defineStore('extract', () => {
   function statusLabel(s: Status) {
     return { queued: 'Queued', processing: 'Processing', done: 'Done', error: 'Error' }[s]
   }
+  const importing = ref(false)
+  const importError = ref<string | null>(null)
+
+  async function importToRepository() {
+    importing.value = true
+    importError.value = null
+    try {
+      // Phase 1: check for existing-AFE conflicts, doesn't write yet
+      const result = await $fetch<any>('/api/afe/import', { method: 'POST' })
+
+      if (result.status === 'needs_confirmation') {
+        const conflicts = result.overwrite_conflicts as Array<{
+          afe_number: string
+          last_updated: string
+          resolved_dlq_count: number
+        }>
+        const names = conflicts.map(c => c.afe_number).join(', ')
+        const withFixes = conflicts.filter(c => c.resolved_dlq_count > 0)
+
+        let message = `${conflicts.length} AFE record(s) already exist and will be overwritten: ${names}.`
+        if (withFixes.length > 0) {
+          message += `\n\nWarning: ${withFixes.length} of these have manually resolved DLQ flags that may be lost if the new data still has the same issues.`
+        }
+        message += '\n\nContinue and overwrite?'
+
+        if (!confirm(message)) {
+          importing.value = false
+          return
+        }
+
+        // Phase 2: confirmed — write for real
+        await $fetch('/api/afe/import', {
+          method: 'POST',
+          body: { confirmOverwrite: true },
+        })
+      }
+    } catch (err: any) {
+      importError.value = err?.data?.statusMessage ?? err.message
+    } finally {
+      importing.value = false
+    }
+  }
 
   return {
     files, isBusy, doneCount, allDone,
+    duplicateAfeMap, getDuplicateWarning,
     restoreQueue, addFiles, removeFile, clearAll,
     runOne, runAll, pollStatus, cancelExtraction,
     downloadOne, downloadAll, pretty, formatBytes, statusLabel,
+    importToRepository, importing, importError,
   }
 })
