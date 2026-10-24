@@ -15,6 +15,11 @@ export const useFormatters = () => {
     return formatCurrency(total / pipeLength)
   }
 
+  const formatCostPerTon = (total: number, tonnage: number | null): string => {
+    if (tonnage == null || tonnage <= 0) return '—'
+    return formatCurrency(total / tonnage)
+  }
+
   const getSeverityLabel = (deviation: number): string => {
     if (deviation <= 5) return 'Low'
     if (deviation <= 15) return 'Medium'
@@ -38,5 +43,6 @@ export const useFormatters = () => {
     return 'severity-critical'
   }
 
-  return { formatCurrency, formatCostPerFoot, getSeverityLabel, getSeverityBadgeClass, getSeverityClass }
+  return { formatCurrency, formatCostPerFoot, formatCostPerTon, getSeverityLabel, getSeverityBadgeClass, getSeverityClass }
 }
+

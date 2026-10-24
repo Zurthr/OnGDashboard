@@ -23,14 +23,16 @@ interface SummaryFindings {
 }
 
 interface ScenarioParams {
-  forecastYear?: string | number
-  historicalBasis?: string
+  projectYear?: string | number
   waterDepth?: string | number
-  structureLength?: string | number
+  pipeLength?: string | number
+  pipeDiameter?: string | number
   legsConfiguration?: string
   projectLocation?: string
   topsideWeight?: string | number
   jacketWeight?: string | number
+  pilesWeight?: string | number
+  conductorWeight?: string | number
 }
 
 
@@ -246,13 +248,15 @@ export default defineEventHandler(async (event) => {
 
   // ── Parameter rows ─────────────────────────────────────────────────────────
   const paramRowsHtml = [
-    ['Forecast Year', scenarioParams.forecastYear ?? '—'],
-    ['Historical Basis', scenarioParams.historicalBasis ?? '—'],
+    ['Project Year', scenarioParams.projectYear ?? '—'],
     ['Water Depth', scenarioParams.waterDepth ? `${scenarioParams.waterDepth} Meters` : '—'],
-    ['Structure Length', scenarioParams.structureLength ? `${scenarioParams.structureLength} Meters` : '—'],
+    ['Pipeline Length', scenarioParams.pipeLength ? `${scenarioParams.pipeLength} km` : '—'],
+    ['Pipe Diameter', scenarioParams.pipeDiameter ? `${scenarioParams.pipeDiameter} Inches` : '—'],
     ['Legs Configuration', scenarioParams.legsConfiguration ? `${scenarioParams.legsConfiguration} Legs` : '—'],
     ['Topside Weight', scenarioParams.topsideWeight ? `${scenarioParams.topsideWeight} Metric Tons` : '—'],
     ['Jacket Weight', scenarioParams.jacketWeight ? `${scenarioParams.jacketWeight} Metric Tons` : '—'],
+    ['Piles Weight', scenarioParams.pilesWeight ? `${scenarioParams.pilesWeight} Metric Tons` : '—'],
+    ['Conductor Weight', scenarioParams.conductorWeight ? `${scenarioParams.conductorWeight} Metric Tons` : '—'],
     ['Project Location', scenarioParams.projectLocation ?? '—'],
   ].map(([label, val], i) => `
     <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8f8f8'};">
@@ -358,8 +362,7 @@ export default defineEventHandler(async (event) => {
 
   // ── Do Replacements ────────────────────────────────────────────────────────
   html = html
-    .replace(/{{forecastYear}}/g, String(scenarioParams.forecastYear ?? '2028'))
-    .replace(/{{historicalBasis}}/g, String(scenarioParams.historicalBasis ?? '2020–2024'))
+    .replace(/{{projectYear}}/g, String(scenarioParams.projectYear ?? '—'))
     .replace(/{{paramRows}}/g, paramRowsHtml)
     .replace(/{{insightsBlock}}/g, insightsBlockHtml)
     .replace(/{{kpiGrid}}/g, kpiGridHtml)
@@ -402,8 +405,8 @@ export default defineEventHandler(async (event) => {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
 
-  const fYear = scenarioParams.forecastYear || '2028'
-  const reportFilename = `report-${sanitizedLocation}-${fYear}-${Date.now()}.pdf`
+  const pYear = scenarioParams.projectYear || 'forecast'
+  const reportFilename = `report-${sanitizedLocation}-${pYear}-${Date.now()}.pdf`
 
   setHeader(event, 'Content-Type', 'application/pdf')
   setHeader(event, 'Content-Disposition', `attachment; filename="${reportFilename}"`)

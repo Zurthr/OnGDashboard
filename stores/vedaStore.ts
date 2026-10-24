@@ -25,12 +25,14 @@ interface SummaryFindings {
 interface NavParams {
   waterDepth: number | null
   pipeLength: number | null
+  pipeDiameter: number | null
   legs: '2' | '3' | '4' | '6' | ''
   topside: number | null
   jacket: number | null
+  piles: number | null
+  conductor: number | null
   projectLocation: string
-  forecastYear: string
-  costBaseYear: string
+  projectYear: number | null
 }
 
 interface VedaState {
@@ -160,12 +162,14 @@ export const useVedaStore = defineStore('vedaStore', {
     navParams: {
       waterDepth: null,
       pipeLength: null,
+      pipeDiameter: null,
       legs: '',
       topside: null,
       jacket: null,
+      piles: null,
+      conductor: null,
       projectLocation: 'Natuna Sea',
-      forecastYear: '',
-      costBaseYear: '',
+      projectYear: null,
     },
     calcDone: false,
   }),
@@ -330,10 +334,56 @@ export const useVedaStore = defineStore('vedaStore', {
       this.isComparationModalOpen = false
     },
 
-    // Confirm calculation was run — unlocks PDF button
-    async runCalc() {
+    applyForecastResult(response: any) {
+      if (!response) return
+      if (response.summaryFindings) this.summaryFindings = response.summaryFindings
+      if (response.componentFindings) this.componentFindings = response.componentFindings
+      this.computedJson = response
       this.calcDone = true
-      await this.generateNarrative()
+
+      this.generateInsights()
+      this.generateNarrative()
+    },
+
+    // Confirm calculation was run — calls offshore forecast API & unlocks PDF button
+    async runCalc() {
+      const p = this.navParams
+      if (
+        p.legs === '' ||
+        p.waterDepth === null ||
+        p.pipeLength === null ||
+        p.pipeDiameter === null ||
+        p.piles === null ||
+        p.jacket === null ||
+        p.topside === null ||
+        p.conductor === null ||
+        p.projectYear === null
+      ) {
+        throw new Error('Please fill in all 9 forecast parameters before calculating.')
+      }
+
+      const payload = {
+        leg: Number(p.legs),
+        water_depth: Number(p.waterDepth),
+        pipe_length: Number(p.pipeLength),
+        pipe_diameter: Number(p.pipeDiameter),
+        piles: Number(p.piles),
+        jacket: Number(p.jacket),
+        topside: Number(p.topside),
+        conductor: Number(p.conductor),
+        project_year: Number(p.projectYear),
+      }
+
+      const response = await $fetch<any>('/api/new_forecast_api', {
+        method: 'POST',
+        body: payload
+      })
+
+      if (response && response.success) {
+        this.applyForecastResult(response)
+        return response
+      }
+      throw new Error(response?.error || 'Forecast calculation failed')
     }
   }
 })

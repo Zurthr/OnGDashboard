@@ -2,13 +2,13 @@
   <div class="at-a-glance-section">
     <h2 class="section-title">At a Glance</h2>
     <div class="scorecard-row">
-      <!-- Card 1: Cost Basis (USD) -->
+      <!-- Card 1: Forecasted Cost (USD) -->
       <div class="scorecard-card neutral-card" style="min-width:164px">
-        <span class="card-label">Cost Basis (USD)</span>
+        <span class="card-label">Forecasted Cost (USD)</span>
         <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-val-skeleton"></div>
-        <span v-else class="card-val num-font">{{ formatCurrency(store.summaryFindings.baselineTotal) }}</span>
+        <span v-else class="card-val num-font">{{ formatCurrency(adjusted.totalAdjusted) }}</span>
         <span v-if="!store.loadingDetails" class="card-subtitle">
-          <span class="subtext-bold num-font">{{ baselineCostPerFoot }}</span> <span class="subtext-unit">US$/ft</span>
+          <span class="subtext-bold num-font">{{ baselineCostPerTon }}</span> <span class="subtext-unit">US/ton</span>
         </span>
       </div>
 
@@ -20,8 +20,8 @@
           {{ hasComparation ? formatCurrency(comparationTotal) : '-' }}
         </span>
         <span v-if="!store.loadingDetails" class="card-subtitle">
-          <span class="subtext-bold num-font">{{ hasComparation ? comparationCostPerFoot : '-' }}</span>
-          <span class="subtext-unit"> US$/ft</span>
+          <span class="subtext-bold num-font">{{ hasComparation ? comparationCostPerTon : '-' }}</span>
+          <span class="subtext-unit"> US/ton</span>
         </span>
       </div>
 
@@ -33,8 +33,8 @@
           {{ hasComparation ? formatCurrency(varianceTotal) : '-' }}
         </span>
         <span v-if="!store.loadingDetails" class="card-subtitle">
-          <span class="subtext-bold num-font">{{ hasComparation ? varianceCostPerFoot : '-' }}</span>
-          <span class="subtext-unit"> US$/ft</span>
+          <span class="subtext-bold num-font">{{ hasComparation ? varianceCostPerTon : '-' }}</span>
+          <span class="subtext-unit"> US/ton</span>
         </span>
       </div>
 
@@ -83,24 +83,33 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useVedaStore } from '~/stores/vedaStore'
 import { usePlatformVedaStore } from '~/stores/platformVedaStore'
 import { useSubseaVedaStore } from '~/stores/subseaVedaStore'
 import { useFpsoVedaStore } from '~/stores/fpsoVedaStore'
 import { useRoute } from 'vue-router'
 import { useFormatters } from '~/composables/useFormatters'
+import { useKkksAdjustedForecasts } from '~/composables/useKkksAdjustedForecasts'
+import { useForecastStore } from '~/composables/useForecastStore'
 
-const route = useRoute()
-const { formatCurrency, formatCostPerFoot, getSeverityLabel, getSeverityBadgeClass } = useFormatters()
+const store = useForecastStore()
+const { formatCurrency, formatCostPerTon, getSeverityLabel, getSeverityBadgeClass } = useFormatters()
 
-const store = computed(() => {
-  if (route.path.startsWith('/platform')) return usePlatformVedaStore()
-  if (route.path.startsWith('/subsea')) return useSubseaVedaStore()
-  if (route.path.startsWith('/fpso')) return useFpsoVedaStore()
-  return useVedaStore()
-}).value
+const totalTonnage = computed(() => {
+  const p = store.navParams
+  const topside = Number(p.topside) || 0
+  const jacket = Number(p.jacket) || 0
+  const piles = Number(p.piles) || 0
+  const conductor = Number(p.conductor) || 0
+  const total = topside + jacket + piles + conductor
+  return total > 0 ? total : null
+})
 
-const pipeLength = computed(() => store.navParams.pipeLength)
+//  KKKS MODIFIER 
+const { result: adjusted } = useKkksAdjustedForecasts(
+  () => store.componentFindings,
+  () => store.selectedKkks ?? null,
+  () => (store.kkksModifierMode ?? 'none') as 'none' | 'median' | 'mean'
+)
 
 // Compute comparation total from store inputs
 const hasComparation = computed(() => {
@@ -122,24 +131,25 @@ const comparationTotal = computed(() => {
 
 const varianceTotal = computed(() => {
   if (!hasComparation.value) return 0
-  return comparationTotal.value - store.summaryFindings.baselineTotal
+  return comparationTotal.value - adjusted.value.totalAdjusted
 })
 
 const percentageDeviation = computed(() => {
-  if (!hasComparation.value || store.summaryFindings.baselineTotal === 0) return 0
-  return Number(((varianceTotal.value / store.summaryFindings.baselineTotal) * 100).toFixed(2))
+  const base = adjusted.value.totalAdjusted
+  if (!hasComparation.value || base === 0) return 0
+  return Number(((varianceTotal.value / base) * 100).toFixed(2))
 })
 
-const baselineCostPerFoot = computed(() =>
-  formatCostPerFoot(store.summaryFindings.baselineTotal, pipeLength.value)
+const baselineCostPerTon = computed(() =>
+  formatCostPerTon(adjusted.value.totalAdjusted, totalTonnage.value)
 )
 
-const comparationCostPerFoot = computed(() =>
-  formatCostPerFoot(comparationTotal.value, pipeLength.value)
+const comparationCostPerTon = computed(() =>
+  formatCostPerTon(comparationTotal.value, totalTonnage.value)
 )
 
-const varianceCostPerFoot = computed(() =>
-  formatCostPerFoot(varianceTotal.value, pipeLength.value)
+const varianceCostPerTon = computed(() =>
+  formatCostPerTon(varianceTotal.value, totalTonnage.value)
 )
 
 const formatCostTypeLabel = (costType: string) =>
@@ -285,6 +295,8 @@ const historicalStatusLabel = computed(() => {
   color: #64748b;
   margin-top: 4px;
 }
+
+
 
 .dominant-driver-names {
   line-height: 1.35;

@@ -57,7 +57,6 @@
 
 <script setup lang="ts">
 import { computed, shallowRef, onMounted } from 'vue'
-import { useVedaStore } from '~/stores/vedaStore'
 import { usePlatformVedaStore } from '~/stores/platformVedaStore'
 import { useSubseaVedaStore } from '~/stores/subseaVedaStore'
 import { useFpsoVedaStore } from '~/stores/fpsoVedaStore'
@@ -71,10 +70,9 @@ const props = withDefaults(defineProps<{
 const route = useRoute()
 
 const store = computed(() => {
-  if (route.path.startsWith('/platform')) return usePlatformVedaStore()
   if (route.path.startsWith('/subsea')) return useSubseaVedaStore()
   if (route.path.startsWith('/fpso')) return useFpsoVedaStore()
-  return useVedaStore()
+  return usePlatformVedaStore()
 }).value
 
 const hasComparation = computed(() => {

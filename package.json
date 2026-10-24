@@ -8,6 +8,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
+    "test": "node --test --experimental-strip-types tests/**/*.test.ts",
     "evaluate": "node scripts/evaluate.mjs scripts/data/synthetic_cost_benchmarking_100_scenarios_no_flags.csv",
     "predict": "node scripts/predict.mjs",
     "generate-ground-truth": "node scripts/generateGroundTruth.mjs"

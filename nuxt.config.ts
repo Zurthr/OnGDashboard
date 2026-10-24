@@ -2,7 +2,7 @@
 export default defineNuxtConfig({
   compatibilityDate: '2026-06-20',
   devtools: { enabled: true },
-  
+
   modules: [
     '@pinia/nuxt',
     '@nuxt/icon'
@@ -21,5 +21,12 @@ export default defineNuxtConfig({
     externals: {
       external: ['puppeteer']
     }
-  }
+  },
+
+  // Nuxt's unimport scanner misparses numeric index types in useKkksDeviations
+  // and generates an invalid `import { 1 }` binding. Exclude it from scanning.
+  // All usages already use explicit imports, so no auto-import is needed.
+  ignore: [
+    '**/useKkksDeviations*'
+  ]
 })

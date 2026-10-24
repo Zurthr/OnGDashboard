@@ -8,8 +8,7 @@
       <!-- ── Tab content with animated height container ── -->
       <div class="tab-panel-content animate-height" :style="{ minHeight: activeTabHeight }">
         <Transition name="tab-fade" mode="out-in">
-          <LocationTab v-if="activeTab === 'Location'" />
-          <VarianceTab v-else-if="activeTab === 'Variance'" />
+          <VarianceTab v-if="activeTab === 'Variance'" />
           <TreemapTab  v-else-if="activeTab === 'Treemap'"  :mode="treemapMode" />
         </Transition>
       </div>
@@ -51,12 +50,11 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import LocationTab from '~/components/Forecast/tabs/LocationTab.vue'
 import VarianceTab from '~/components/Forecast/tabs/VarianceTab.vue'
 import TreemapTab  from '~/components/Forecast/tabs/TreemapTab.vue'
 
-const tabs = ['Location', 'Variance', 'Treemap'] as const
-const activeTab = ref<typeof tabs[number]>('Location')
+const tabs = ['Variance', 'Treemap'] as const
+const activeTab = ref<typeof tabs[number]>('Variance')
 
 type TreemapMode = 'variance' | 'baseline' | 'forecast'
 const treemapMode  = ref<TreemapMode>('variance')
@@ -68,7 +66,6 @@ const treemapModes: { label: string; value: TreemapMode }[] = [
 
 // Dynamic height matching each active tab layout to enable smooth parent container transitions
 const activeTabHeight = computed(() => {
-  if (activeTab.value === 'Location') return '402px'
   if (activeTab.value === 'Variance') return '340px'
   return '480px' // Treemap fixed height
 })

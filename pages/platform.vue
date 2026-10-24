@@ -20,13 +20,9 @@ const route = useRoute()
 
 onMounted(async () => {
   const scenarioIdParam = route.query.scenarioId ? Number(route.query.scenarioId) : null
-  const locationParam = route.query.location ? String(route.query.location) : null
 
   if (scenarioIdParam && !isNaN(scenarioIdParam)) {
     store.selectedScenarioId = scenarioIdParam
-  }
-  if (locationParam) {
-    store.selectedLocation = locationParam
   }
 
   await store.fetchScenarios()
