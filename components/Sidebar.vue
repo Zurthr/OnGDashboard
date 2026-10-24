@@ -15,10 +15,10 @@
         <span class="nav-section-label">Platform</span>
 
         <!-- Dashboard -->
-        <NuxtLink to="/" class="nav-item" :class="{ 'nav-item--active': route.path === '/' }">
+        <!-- <NuxtLink to="/" class="nav-item" :class="{ 'nav-item--active': route.path === '/' }">
           <img src="assets\icons\db.png" alt="Dashboard" class="nav-icon">
           <span class="nav-label">Dashboard</span>
-        </NuxtLink>
+        </NuxtLink> -->
 
         <!-- [OLD] Forecast -->
         <NuxtLink to="/forecast" class="nav-item" :class="{ 'nav-item--active': route.path === '/forecast' }">
@@ -56,21 +56,18 @@
       </div>
 
       <!-- ── GENERAL ───────────────────────────────── -->
-      <div class="nav-section">
+      <!-- <div class="nav-section">
         <span class="nav-section-label">General</span>
 
-        <!-- Repository -->
-        <NuxtLink to="/repo" class="nav-item" :class="{ 'nav-item--active': route.path === '/repo' }">
+        <!-- <NuxtLink to="/repo" class="nav-item" :class="{ 'nav-item--active': route.path === '/repo' }">
           <img src="assets\icons\data.png" alt="Repository" class="nav-icon">
           <span class="nav-label">Repository</span>
         </NuxtLink>
-
-        <!-- Extract Reports -->
-        <NuxtLink to="/extract" class="nav-item" :class="{ 'nav-item--active': route.path === '/extract' }">
+          <NuxtLink to="/extract" class="nav-item" :class="{ 'nav-item--active': route.path === '/extract' }">
           <img src="assets\icons\extract.png" alt="Extract Reports" class="nav-icon">
           <span class="nav-label">Extract Reports</span>
         </NuxtLink>
-      </div>
+      </div> --> 
 
     </div>
 </template>
