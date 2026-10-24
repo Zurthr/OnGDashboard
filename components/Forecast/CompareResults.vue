@@ -1,9 +1,9 @@
 <template>
   <div class="compare-results-section">
-    <!-- 3-column grid: Cost Basis | Comparation | Variance -->
+    <!-- 3-column grid: Forecasted Cost | Comparation | Variance -->
     <div class="results-grid">
 
-      <!-- COL 1: Cost Basis -->
+      <!-- COL 1: Forecasted Cost -->
       <div class="col-basis">
         <div style="display: flex; flex-direction: row; gap: 52px;">
           <div class="section-label-block">
@@ -11,11 +11,13 @@
             <h1 class="results-label">Results</h1>
           </div>
           <div class="col-header-block">
-            <span class="col-header-label">Cost Basis</span>
+            <span class="col-header-label">Forecasted Cost</span>
             <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse header-skeleton"></div>
-            <span v-else class="col-header-value num-font">{{ formatCurrency(store.summaryFindings.baselineTotal) }}</span>
+            <span v-else class="col-header-value num-font">
+              {{ formatCurrency(adjusted.totalAdjusted) }}
+            </span>
             <span v-if="!store.loadingDetails" class="col-header-subtext">
-              <span class="subtext-bold num-font">{{ baselineCostPerFoot }}</span> <span class="subtext-unit">US$/ft</span>
+              <span class="subtext-bold num-font">{{ baselineCostPerTon }}</span> <span class="subtext-unit">US/ton</span>
             </span>
           </div>
         </div>
@@ -23,22 +25,34 @@
         <!-- Basis Cards -->
         <div class="cards-list">
           <div 
-            v-for="finding in store.componentFindings" 
-            :key="finding.costType" 
+            v-for="comp in adjusted.components" 
+            :key="comp.costType" 
             class="basis-card"
-            :class="{ 'dominant-card': hasComparation && finding.isDominantDriver }"
+            :class="{
+              'dominant-card': hasComparation && findingFor(comp.costType)?.isDominantDriver,
+            }"
           >
             <div class="card-left">
               <span class="card-prefix">
-                Total <span v-if="hasComparation && finding.isDominantDriver" class="dominant-prefix">• Dominant</span>
+                Total <span v-if="hasComparation && findingFor(comp.costType)?.isDominantDriver" class="dominant-prefix"> Dominant</span>
               </span>
-              <span class="card-name">{{ finding.costType }}</span>
+              <span class="card-name">{{ comp.costType }}</span>
             </div>
             <div class="card-divider"></div>
             <div class="card-right">
-              <span class="card-currency">in USD</span>
+              <div class="card-badge-row">
+                <span class="card-currency">in USD</span>
+                <span
+                  v-if="comp.isAdjusted && comp.deviationPct !== null"
+                  class="kkks-effect-pill num-font"
+                  :class="comp.deviationPct > 0 ? 'pill-increase' : 'pill-decrease'"
+                  :title="`KKKS deviation effect: ${comp.deviationPct > 0 ? '+' : ''}${comp.deviationPct}%`"
+                >
+                  {{ comp.deviationPct > 0 ? '+' : '' }}{{ comp.deviationPct }}%
+                </span>
+              </div>
               <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse card-value-skeleton"></div>
-              <span v-else class="card-value num-font">{{ formatCurrency(finding.baseline) }}</span>
+              <span v-else class="card-value num-font">{{ formatCurrency(comp.adjustedValue) }}</span>
             </div>
           </div>
         </div>
@@ -50,15 +64,15 @@
           <div class="col-header-block">
             <div class="header-label-row">
               <span class="col-header-label">Comparation</span>
-              <button class="btn-edit-inline" @click.stop="openModal">✏️ Input</button>
+              <button class="btn-edit-inline" @click.stop="openModal"> Input</button>
             </div>
             <div v-if="store.loadingDetails" class="skeleton-bar animate-pulse header-skeleton"></div>
             <span v-else class="col-header-value num-font forecast-value-color">
               {{ hasComparation ? formatCurrency(comparationTotal) : '-' }}
             </span>
             <span v-if="!store.loadingDetails" class="col-header-subtext is-red">
-              <span class="subtext-bold num-font">{{ hasComparation ? comparationCostPerFoot : '-' }}</span>
-              <span class="subtext-unit"> US$/ft</span>
+              <span class="subtext-bold num-font">{{ hasComparation ? comparationCostPerTon : '-' }}</span>
+              <span class="subtext-unit"> US/ton</span>
             </span>
           </div>
 
@@ -101,9 +115,9 @@
           <span v-else class="col-header-value num-font variance-value-color">
             {{ hasComparation ? formatCurrency(varianceTotal) : '-' }}
           </span>
-          <span v-if="!store.loadingDetails" class="col-header-subtext variance-subtext">
-            <span class="subtext-bold num-font">{{ hasComparation ? varianceCostPerFoot : '-' }}</span>
-            <span class="subtext-unit"> US$/ft</span>
+          <span v-if="!store.loadingDetails" class="col-header-subtext variance-subtext" style="margin-bottom: 12px;">
+            <span class="subtext-bold num-font">{{ hasComparation ? varianceCostPerTon : '-' }}</span>
+            <span class="subtext-unit"> US/ton</span>
           </span>
 
           <!-- Variance Cards -->
@@ -147,7 +161,7 @@
           <div class="modal-header">
             <div>
               <h3 class="modal-title">Input Comparation Values</h3>
-              <p class="modal-subtitle">Enter budget or actual values to analyze variance against Cost Basis</p>
+              <p class="modal-subtitle">Enter budget or actual values to analyze variance against Forecasted Cost</p>
             </div>
             <button class="modal-close-btn" @click="closeModal">&times;</button>
           </div>
@@ -165,20 +179,20 @@
               <div class="input-wrapper">
                 <span class="input-prefix">$</span>
                 <input
-                  v-model.number="localInputs[finding.costType]"
-                  type="number"
+                  :value="localInputsFormatted[finding.costType] || ''"
+                  type="text"
+                  inputmode="numeric"
                   class="modal-input num-font"
-                  placeholder="Enter amount..."
-                  min="0"
-                  @keydown.e.prevent
-                  @keydown.-.prevent
+                  placeholder="0"
+                  @input="onFormattedInput(finding.costType, $event)"
+                  @keydown.enter="saveComparation"
                 />
               </div>
             </div>
           </div>
 
           <div class="modal-footer">
-            <button class="btn-secondary" @click="closeModal">Cancel</button>
+            <button class="btn-secondary" @click="closeModal">Skip Comparation</button>
             <button class="btn-primary" @click="saveComparation">Save Comparation</button>
           </div>
         </div>
@@ -189,33 +203,80 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
-import { useVedaStore } from '~/stores/vedaStore'
-import { usePlatformVedaStore } from '~/stores/platformVedaStore'
-import { useSubseaVedaStore } from '~/stores/subseaVedaStore'
-import { useFpsoVedaStore } from '~/stores/fpsoVedaStore'
-import { useRoute } from 'vue-router'
+import { computed, reactive, watch } from 'vue'
 import { useFormatters } from '~/composables/useFormatters'
+import { useKkksAdjustedForecasts } from '~/composables/useKkksAdjustedForecasts'
+import { useForecastStore } from '~/composables/useForecastStore'
 
-const route = useRoute()
-const { formatCurrency, formatCostPerFoot, getSeverityClass, getSeverityLabel } = useFormatters()
+const store = useForecastStore()
+const { formatCurrency, formatCostPerTon, getSeverityClass, getSeverityLabel } = useFormatters()
 
-const store = computed(() => {
-  if (route.path.startsWith('/platform')) return usePlatformVedaStore()
-  if (route.path.startsWith('/subsea')) return useSubseaVedaStore()
-  if (route.path.startsWith('/fpso')) return useFpsoVedaStore()
-  return useVedaStore()
-}).value
+const totalTonnage = computed(() => {
+  const p = store.navParams
+  const topside = Number(p.topside) || 0
+  const jacket = Number(p.jacket) || 0
+  const piles = Number(p.piles) || 0
+  const conductor = Number(p.conductor) || 0
+  const total = topside + jacket + piles + conductor
+  return total > 0 ? total : null
+})
 
-const pipeLength = computed(() => store.navParams.pipeLength)
+//  KKKS MODIFIER 
+const { result: adjusted } = useKkksAdjustedForecasts(
+  () => store.componentFindings,
+  () => store.selectedKkks ?? null,
+  () => (store.kkksModifierMode ?? 'none') as 'none' | 'median' | 'mean'
+)
 
+/** Lookup the original finding by costType for isDominantDriver etc. */
+const findingFor = (costType: string) =>
+  store.componentFindings.find(f => f.costType === costType)
+
+//  COMPARATION MODAL 
 const localInputs = reactive<Record<string, number | null>>({})
+const localInputsFormatted = reactive<Record<string, string>>({})
+
+const formatNumberString = (val: number | null | undefined): string => {
+  if (val === null || val === undefined || isNaN(val)) return ''
+  return new Intl.NumberFormat('en-US').format(val)
+}
+
+const syncLocalInputsFromStore = () => {
+  store.componentFindings.forEach(c => {
+    const val = store.comparationInputs[c.costType] ?? null
+    localInputs[c.costType] = val
+    localInputsFormatted[c.costType] = formatNumberString(val)
+  })
+}
 
 const openModal = () => {
-  store.componentFindings.forEach(c => {
-    localInputs[c.costType] = store.comparationInputs[c.costType] ?? null
-  })
+  syncLocalInputsFromStore()
   store.openComparationModal()
+}
+
+watch(
+  () => store.isComparationModalOpen,
+  (isOpen) => {
+    if (isOpen) {
+      syncLocalInputsFromStore()
+    }
+  }
+)
+
+const onFormattedInput = (costType: string, e: Event) => {
+  const target = e.target as HTMLInputElement
+  const rawValue = target.value.replace(/[^0-9]/g, '')
+  if (!rawValue) {
+    localInputs[costType] = null
+    localInputsFormatted[costType] = ''
+    target.value = ''
+    return
+  }
+  const numericVal = parseInt(rawValue, 10)
+  localInputs[costType] = numericVal
+  const formatted = new Intl.NumberFormat('en-US').format(numericVal)
+  localInputsFormatted[costType] = formatted
+  target.value = formatted
 }
 
 const closeModal = () => {
@@ -246,39 +307,45 @@ const comparationTotal = computed(() => {
   }, 0)
 })
 
+// Variance is always against the KKKS-adjusted forecasted cost (totalAdjusted)
 const varianceTotal = computed(() => {
   if (!hasComparation.value) return 0
-  return comparationTotal.value - store.summaryFindings.baselineTotal
+  return comparationTotal.value - adjusted.value.totalAdjusted
 })
 
 const percentageDeviationTotal = computed(() => {
-  if (!hasComparation.value || store.summaryFindings.baselineTotal === 0) return 0
-  return Number(((varianceTotal.value / store.summaryFindings.baselineTotal) * 100).toFixed(2))
+  const base = adjusted.value.totalAdjusted
+  if (!hasComparation.value || base === 0) return 0
+  return Number(((varianceTotal.value / base) * 100).toFixed(2))
 })
 
 const getAbsoluteVariance = (finding: any) => {
   const val = getComparationValue(finding.costType)
   if (val === null) return 0
-  return val - finding.baseline
+  // Use adjusted baseline for this component
+  const comp = adjusted.value.components.find(c => c.costType === finding.costType)
+  const base = comp ? comp.adjustedValue : finding.baseline
+  return val - base
 }
 
 const getPercentageDeviation = (finding: any) => {
   const val = getComparationValue(finding.costType)
-  if (val === null || finding.baseline === 0) return 0
-  const abs = val - finding.baseline
-  return Number(((abs / finding.baseline) * 100).toFixed(2))
+  const comp = adjusted.value.components.find(c => c.costType === finding.costType)
+  const base = comp ? comp.adjustedValue : finding.baseline
+  if (val === null || base === 0) return 0
+  return Number((((val - base) / base) * 100).toFixed(2))
 }
 
-const baselineCostPerFoot = computed(() =>
-  formatCostPerFoot(store.summaryFindings.baselineTotal, pipeLength.value)
+const baselineCostPerTon = computed(() =>
+  formatCostPerTon(adjusted.value.totalAdjusted, totalTonnage.value)
 )
 
-const comparationCostPerFoot = computed(() =>
-  formatCostPerFoot(comparationTotal.value, pipeLength.value)
+const comparationCostPerTon = computed(() =>
+  formatCostPerTon(comparationTotal.value, totalTonnage.value)
 )
 
-const varianceCostPerFoot = computed(() =>
-  formatCostPerFoot(varianceTotal.value, pipeLength.value)
+const varianceCostPerTon = computed(() =>
+  formatCostPerTon(varianceTotal.value, totalTonnage.value)
 )
 </script>
 
@@ -332,6 +399,15 @@ const varianceCostPerFoot = computed(() =>
   flex-direction: column;
   margin-bottom: 18px;
 }
+
+.col-header-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+
 
 .header-label-row {
   display: flex;
@@ -401,7 +477,7 @@ const varianceCostPerFoot = computed(() =>
 }
 
 /* =============================================
-   COL 1: COST BASIS
+   COL 1: FORECASTED COST
    ============================================= */
 .col-basis {
   margin-top: 16px;
@@ -577,7 +653,7 @@ const varianceCostPerFoot = computed(() =>
   font-size: 10px;
   font-weight: 500;
   color: #94a3b8;
-  margin-bottom: 2px;
+  line-height: 1;
 }
 
 .card-value {
@@ -616,7 +692,8 @@ const varianceCostPerFoot = computed(() =>
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2px;
+  width: 100%;
+  margin-bottom: 4px;
 }
 
 .dominant-tag {
@@ -627,6 +704,33 @@ const varianceCostPerFoot = computed(() =>
   padding: 2px 6px;
   border-radius: 4px;
   letter-spacing: 0.5px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+
+.kkks-effect-pill {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  letter-spacing: 0.3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.pill-increase {
+  color: #c2410c;
+  background-color: #ffedd5;
+  border: 1px solid #fed7aa;
+}
+
+.pill-decrease {
+  color: #15803d;
+  background-color: #dcfce7;
+  border: 1px solid #bbf7d0;
 }
 
 /* =============================================

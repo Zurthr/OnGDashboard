@@ -210,24 +210,26 @@ const generatePdf = async () => {
         useNarrative: summaryType.value === 'narrative',
         selectedVisualizations: selected.value,
         scenarioParams: {
-          forecastYear:        store.navParams.forecastYear || '2028',
-          historicalBasis:     store.navParams.costBaseYear || '2020–2024',
-          projectLocation:     store.navParams.projectLocation || store.selectedLocation || '—',
+          projectYear:         store.navParams.projectYear ?? undefined,
+          projectLocation:     store.selectedKkks ? `KKKS: ${store.selectedKkks}` : (store.navParams.projectLocation || '—'),
           waterDepth:          store.navParams.waterDepth ?? undefined,
-          structureLength:     store.navParams.pipeLength ?? undefined,
+          pipeLength:          store.navParams.pipeLength ?? undefined,
+          pipeDiameter:        store.navParams.pipeDiameter ?? undefined,
           legsConfiguration:   store.navParams.legs || undefined,
           topsideWeight:       store.navParams.topside ?? undefined,
           jacketWeight:        store.navParams.jacket ?? undefined,
+          pilesWeight:         store.navParams.piles ?? undefined,
+          conductorWeight:     store.navParams.conductor ?? undefined,
         },
       }
     })
 
     // Trigger browser download
-    const sanitizedLoc = (store.selectedLocation || 'unknown')
+    const sanitizedLoc = (store.selectedKkks || store.selectedLocation || 'forecast')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '_')
       .replace(/^_+|_+$/g, '')
-    const reportFilename = `report-${sanitizedLoc}-2028-${Date.now()}.pdf`
+    const reportFilename = `report-${sanitizedLoc}-${store.navParams.projectYear || 'forecast'}-${Date.now()}.pdf`
 
     const url = URL.createObjectURL(response as Blob)
     const a = document.createElement('a')

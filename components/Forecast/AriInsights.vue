@@ -40,7 +40,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useVedaStore } from '~/stores/vedaStore'
 import { usePlatformVedaStore } from '~/stores/platformVedaStore'
 import { useSubseaVedaStore } from '~/stores/subseaVedaStore'
 import { useFpsoVedaStore } from '~/stores/fpsoVedaStore'
@@ -51,10 +50,9 @@ const route = useRoute()
 const { formatCurrency, getSeverityLabel } = useFormatters()
 
 const store = computed(() => {
-  if (route.path.startsWith('/platform')) return usePlatformVedaStore()
   if (route.path.startsWith('/subsea')) return useSubseaVedaStore()
   if (route.path.startsWith('/fpso')) return useFpsoVedaStore()
-  return useVedaStore()
+  return usePlatformVedaStore()
 }).value
 
 const getComparationValue = (costType: string): number | null => {

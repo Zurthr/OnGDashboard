@@ -1,0 +1,72 @@
+{
+    "input_file": "DATABASE PLATFORM.xlsx",
+    "sheet": "RAW",
+    "header_row": 2,
+    "synthetic_ratio": 5,
+    "input_variables": {
+        "leg": "Leg",
+        "water_depth": "Water Depth (meter)",
+        "pipe_length": "Panjang (km)",
+        "pipe_diameter": "Diameter (inch)",
+        "piles": "Piles",
+        "jacket": "Jacket",
+        "topside": "Topsides/Deck",
+        "conductor": "Conductor"
+    },
+    "target_variables": {
+        "substructure": "Subtotal",
+        "pipeline": "Pipe Sub-Total",
+        "topside_deck": "deck Sub-Total",
+        "topside_production": "Production Sub-Total",
+        "certification": "Certification and Permit",
+        "general_support": "Sub Total General Support"
+    },
+    "model_features": {
+        "substructure": [
+            "Water Depth (meter)",
+            "Piles",
+            "Jacket",
+            "Conductor"
+        ],
+        "pipeline": [
+            "Panjang (km)",
+            "Diameter (inch)",
+            "Water Depth (meter)"
+        ],
+        "topside_deck": [
+            "Topsides/Deck",
+            "Water Depth (meter)"
+        ],
+        "topside_production": [
+            "Topsides/Deck",
+            "Water Depth (meter)"
+        ],
+        "certification": [
+            "Leg",
+            "Water Depth (meter)",
+            "Panjang (km)",
+            "Diameter (inch)",
+            "Piles",
+            "Jacket",
+            "Topsides/Deck",
+            "Conductor"
+        ],
+        "general_support": [
+            "Leg",
+            "Water Depth (meter)",
+            "Panjang (km)",
+            "Diameter (inch)",
+            "Piles",
+            "Jacket",
+            "Topsides/Deck",
+            "Conductor"
+        ]
+    },
+    "model": "XGBoost",
+    "validation": "Leave-One-Out Cross-Validation",
+    "metrics": [
+        "R2",
+        "MAE",
+        "RMSE"
+    ]
+}
