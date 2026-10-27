@@ -37,10 +37,11 @@ function formatVedaComputation(forecastData: any) {
   ]
 
   const rawComponents = categories.map(cat => {
-    const baseline = Number(base[cat.key]) || 0
+    const unadjustedBase = Number(base[cat.key]) || 0
     const forecast = Number(adjusted[cat.key]) || 0
-    const absoluteVariance = forecast - baseline
-    const percentageDeviation = baseline > 0 ? (absoluteVariance / baseline) * 100 : 0
+    const baseline = forecast
+    const absoluteVariance = forecast - unadjustedBase
+    const percentageDeviation = unadjustedBase > 0 ? (absoluteVariance / unadjustedBase) * 100 : 0
     return {
       costType: cat.label,
       baseline,

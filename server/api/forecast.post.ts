@@ -1,3 +1,3 @@
-import newOffshoreForecastHandler from './new_offshore_forecast_api/index.post'
+import offshoreForecastHandler from './offshore_forecast_api/index.post'
 
-export default newOffshoreForecastHandler
+export default offshoreForecastHandler

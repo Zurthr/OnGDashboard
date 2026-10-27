@@ -1,8 +1,8 @@
 {
-    "input_file": "DATABASE PLATFORM.xlsx",
+    "input_file": "DATABASE PLATFORM (Plus 25 Questor).xlsx",
     "sheet": "RAW",
     "header_row": 2,
-    "synthetic_ratio": 20,
+    "synthetic_ratio": 5,
     "input_variables": {
         "leg": "Leg",
         "water_depth": "Water Depth (meter)",

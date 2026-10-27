@@ -35,14 +35,15 @@ warnings.filterwarnings("ignore")
 # SETTINGS
 # ============================================================
 
-INPUT_FILE = "DATABASE PLATFORM.xlsx"
+INPUT_FILE = "DATABASE PLATFORM (Plus 25 Questor).xlsx"
 
 SHEET_NAME = "RAW"
 
 HEADER_ROW = 1
 # Excel row 2 = pandas header=1
 
-SYNTHETIC_RATIO = 10
+SYNTHETIC_RATIO = 5
+#change this according to the best ratio you want to use for synthetic data generation
 
 RANDOM_STATE = 42
 
@@ -198,7 +199,6 @@ def clean_numeric(value):
 
     """
     Converts mixed Excel values into numeric values.
-
     Handles examples such as:
 
         12345
@@ -602,49 +602,105 @@ print(
 )
 
 # ============================================================
-# GAUSSIAN COPULA
+# COMPONENT-SPECIFIC MODEL DATASETS
 # ============================================================
 #
-# The Gaussian Copula is generated across BOTH:
+# Missing values are handled separately for each cost component.
 #
-#   Engineering variables
-#   +
-#   Cost variables
+# Example:
+#   If Pipeline inputs are missing for one project, that project
+#   is excluded from the Pipeline model only.
 #
-# This allows synthetic observations to preserve relationships
-# between project characteristics and their costs.
+#   The same project can still be used by Topside, Substructure,
+#   or another model when all variables required by that model
+#   are available.
+#
+# This prevents missing values in one cost section from removing
+# otherwise usable information from other cost sections.
 # ============================================================
 
-COPULA_COLUMNS = (
-    list(
-        INPUT_COLUMNS.values()
+def prepare_model_dataset(
+    model_name,
+    dataframe
+):
+
+    features = MODEL_FEATURES[
+        model_name
+    ]
+
+    target = TARGET_COLUMNS[
+        model_name
+    ]
+
+    required_columns = (
+        features
+        +
+        [target]
     )
-    +
-    list(
-        TARGET_COLUMNS.values()
+
+    model_data = dataframe[
+        required_columns
+    ].copy()
+
+    # --------------------------------------------------------
+    # Only remove rows that are incomplete for THIS model.
+    # --------------------------------------------------------
+
+    missing_before = (
+        model_data
+        .isna()
+        .any(axis=1)
     )
+
+    excluded_rows = int(
+        missing_before.sum()
+    )
+
+    model_data = model_data.dropna(
+        subset=required_columns
+    ).reset_index(
+        drop=True
+    )
+
+    print(
+        f"  {model_name:<20} "
+        f"usable: {len(model_data):>4} | "
+        f"excluded: {excluded_rows:>4}"
+    )
+
+    if excluded_rows > 0:
+        print(
+            f"    Required columns: "
+            f"{', '.join(required_columns)}"
+        )
+
+    return model_data
+
+
+# ============================================================
+# PREPARE DATASET FOR EACH MODEL
+# ============================================================
+
+print("\n")
+print("=" * 70)
+print("COMPONENT-SPECIFIC DATA AVAILABILITY")
+print("=" * 70)
+print(
+    "Rows are excluded only when a required feature or target "
+    "for that specific model is missing."
 )
 
-copula_df = df[
-    COPULA_COLUMNS
-].copy()
+model_datasets = {}
 
-# ------------------------------------------------------------
-# Median imputation for Gaussian Copula preparation
-# ------------------------------------------------------------
+for model_name in MODEL_FEATURES:
 
-for column in COPULA_COLUMNS:
-    median_value = (
-        copula_df[column]
-        .median()
+    model_datasets[
+        model_name
+    ] = prepare_model_dataset(
+        model_name,
+        df
     )
 
-    copula_df[column] = (
-        copula_df[column]
-        .fillna(
-            median_value
-        )
-    )
 
 # ============================================================
 # GAUSSIAN COPULA GENERATOR
@@ -658,6 +714,10 @@ def gaussian_copula_generate(
 
     """
     Generates synthetic tabular data using a Gaussian Copula.
+
+    The generator receives ONLY complete observations belonging
+    to one cost component. Therefore, each model gets its own
+    Gaussian Copula based on the variables relevant to that model.
 
     Procedure:
 
@@ -673,6 +733,27 @@ def gaussian_copula_generate(
 
         return pd.DataFrame(
             columns=data.columns
+        )
+
+    if len(data) < 2:
+
+        raise ValueError(
+            "Gaussian Copula requires at least 2 complete "
+            "observations."
+        )
+
+    # The model-specific dataset should already be complete.
+    if data.isna().any().any():
+
+        missing_columns = list(
+            data.columns[
+                data.isna().any()
+            ]
+        )
+
+        raise ValueError(
+            "Unexpected missing values found in Gaussian Copula "
+            f"data: {missing_columns}"
         )
 
     rng = np.random.default_rng(
@@ -694,15 +775,17 @@ def gaussian_copula_generate(
     )
 
     for column in columns:
-        values = (
-            pd.to_numeric(
-                data[column],
-                errors="coerce"
-            )
-            .fillna(
-                data[column].median()
-            )
+
+        values = pd.to_numeric(
+            data[column],
+            errors="coerce"
         )
+
+        if values.isna().any():
+            raise ValueError(
+                f"Unexpected missing values found in "
+                f"column '{column}' for Gaussian Copula."
+            )
 
         ranks = (
             values
@@ -845,7 +928,6 @@ def gaussian_copula_generate(
                 data[column],
                 errors="coerce"
             )
-            .dropna()
             .sort_values()
             .values
         )
@@ -904,6 +986,7 @@ def gaussian_copula_generate(
 
     return synthetic
 
+
 # ============================================================
 # ENGINEERING CONSTRAINTS FOR SYNTHETIC DATA
 # ============================================================
@@ -912,6 +995,17 @@ def apply_synthetic_constraints(
     synthetic,
     original
 ):
+
+    """
+    Applies engineering constraints only to columns that exist
+    in the current component-specific dataset.
+
+    This is important because different cost models use different
+    feature sets. For example, the Substructure dataset does not
+    contain pipe length, so pipe-length constraints must not be
+    applied to that dataset.
+    """
+
     synthetic = synthetic.copy()
 
     # --------------------------------------------------------
@@ -922,14 +1016,16 @@ def apply_synthetic_constraints(
         "leg"
     ]
 
-    synthetic[leg] = (
-        synthetic[leg]
-        .clip(
-            original[leg].min(),
-            original[leg].max()
+    if leg in synthetic.columns:
+
+        synthetic[leg] = (
+            synthetic[leg]
+            .clip(
+                original[leg].min(),
+                original[leg].max()
+            )
+            .round()
         )
-        .round()
-    )
 
     # --------------------------------------------------------
     # Water depth
@@ -939,13 +1035,15 @@ def apply_synthetic_constraints(
         "water_depth"
     ]
 
-    synthetic[water_depth] = (
-        synthetic[water_depth]
-        .clip(
-            original[water_depth].min(),
-            original[water_depth].max()
+    if water_depth in synthetic.columns:
+
+        synthetic[water_depth] = (
+            synthetic[water_depth]
+            .clip(
+                original[water_depth].min(),
+                original[water_depth].max()
+            )
         )
-    )
 
     # --------------------------------------------------------
     # Pipe length
@@ -955,12 +1053,14 @@ def apply_synthetic_constraints(
         "pipe_length"
     ]
 
-    synthetic[pipe_length] = (
-        synthetic[pipe_length]
-        .clip(
-            lower=0
+    if pipe_length in synthetic.columns:
+
+        synthetic[pipe_length] = (
+            synthetic[pipe_length]
+            .clip(
+                lower=0
+            )
         )
-    )
 
     # --------------------------------------------------------
     # Pipe diameter
@@ -970,12 +1070,14 @@ def apply_synthetic_constraints(
         "pipe_diameter"
     ]
 
-    synthetic[pipe_diameter] = (
-        synthetic[pipe_diameter]
-        .clip(
-            lower=0
+    if pipe_diameter in synthetic.columns:
+
+        synthetic[pipe_diameter] = (
+            synthetic[pipe_diameter]
+            .clip(
+                lower=0
+            )
         )
-    )
 
     # --------------------------------------------------------
     # Structural weights
@@ -992,120 +1094,172 @@ def apply_synthetic_constraints(
             key
         ]
 
-        synthetic[column] = (
-            synthetic[column]
-            .clip(
-                lower=0
+        if column in synthetic.columns:
+
+            synthetic[column] = (
+                synthetic[column]
+                .clip(
+                    lower=0
+                )
             )
-        )
 
     # --------------------------------------------------------
     # Costs
     # --------------------------------------------------------
 
     for column in TARGET_COLUMNS.values():
-        synthetic[column] = (
-            synthetic[column]
-            .clip(
-                lower=0
+
+        if column in synthetic.columns:
+
+            synthetic[column] = (
+                synthetic[column]
+                .clip(
+                    lower=0
+                )
             )
-        )
 
     return synthetic
 
-# ============================================================
-# CREATE SYNTHETIC DATA
-# ============================================================
 
-synthetic_count = (
-    len(copula_df)
-    *
-    SYNTHETIC_RATIO
-)
+# ============================================================
+# CREATE COMPONENT-SPECIFIC SYNTHETIC DATA
+# ============================================================
 
 print("\n")
 print("=" * 70)
-print("GAUSSIAN COPULA SYNTHESIS")
+print("GAUSSIAN COPULA SYNTHESIS BY COMPONENT")
 print("=" * 70)
 
-print(
-    f"Original observations : {len(copula_df)}"
-)
+synthetic_datasets = {}
+combined_datasets = {}
 
-print(
-    f"Synthetic ratio       : {SYNTHETIC_RATIO}x"
-)
+for model_name in MODEL_FEATURES:
 
-print(
-    f"Synthetic observations: {synthetic_count}"
-)
+    model_data = model_datasets[
+        model_name
+    ]
 
-synthetic_df = (
-    gaussian_copula_generate(
-        copula_df,
-        synthetic_count,
-        RANDOM_STATE
+    synthetic_count = int(
+        len(model_data)
+        *
+        SYNTHETIC_RATIO
     )
-)
 
-synthetic_df = (
-    apply_synthetic_constraints(
-        synthetic_df,
-        copula_df
+    print("\n" + "-" * 70)
+    print(
+        f"Model: {model_name}"
     )
-)
+    print(
+        f"Original observations : {len(model_data)}"
+    )
+    print(
+        f"Synthetic ratio       : {SYNTHETIC_RATIO}x"
+    )
+    print(
+        f"Synthetic observations: {synthetic_count}"
+    )
 
-# ============================================================
-# ADD DATA SOURCE LABEL
-# ============================================================
+    if len(model_data) < 2:
 
-original_training = copula_df.copy()
+        print(
+            "WARNING: Not enough complete observations for "
+            "Gaussian Copula synthesis."
+        )
+        print(
+            f"Skipping {model_name} synthetic-data generation."
+        )
 
-original_training[
-    "Data_Type"
-] = "Original"
+        synthetic_datasets[
+            model_name
+        ] = pd.DataFrame(
+            columns=model_data.columns
+        )
 
-synthetic_training = synthetic_df.copy()
+    else:
 
-synthetic_training[
-    "Data_Type"
-] = "Synthetic"
+        synthetic_data = (
+            gaussian_copula_generate(
+                model_data,
+                synthetic_count,
+                RANDOM_STATE
+            )
+        )
 
-combined_df = pd.concat(
-    [
-        original_training,
-        synthetic_training
-    ],
-    ignore_index=True
-)
+        synthetic_data = (
+            apply_synthetic_constraints(
+                synthetic_data,
+                model_data
+            )
+        )
 
-print("\nCombined training data:")
-print(
-    f"Original : {len(original_training)}"
-)
+        synthetic_datasets[
+            model_name
+        ] = synthetic_data
 
-print(
-    f"Synthetic: {len(synthetic_training)}"
-)
+    # --------------------------------------------------------
+    # Combine original + synthetic data for THIS model only.
+    # --------------------------------------------------------
 
-print(
-    f"Total    : {len(combined_df)}"
-)
+    original_training = model_data.copy()
+
+    original_training[
+        "Data_Type"
+    ] = "Original"
+
+    synthetic_training = (
+        synthetic_datasets[
+            model_name
+        ].copy()
+    )
+
+    synthetic_training[
+        "Data_Type"
+    ] = "Synthetic"
+
+    combined_datasets[
+        model_name
+    ] = pd.concat(
+        [
+            original_training,
+            synthetic_training
+        ],
+        ignore_index=True
+    )
+
+    print(
+        f"Combined observations  : "
+        f"{len(combined_datasets[model_name])}"
+    )
+
 
 # ============================================================
 # SAVE SYNTHETIC DATA
+# ============================================================
+#
+# All component-specific synthetic datasets are saved into one
+# workbook. Each component receives its own worksheet because
+# the feature columns differ between models.
 # ============================================================
 
 synthetic_file = (
     f"synthetic_data_"
     f"{SYNTHETIC_RATIO}x.xlsx"
-
 )
 
-synthetic_df.to_excel(
+with pd.ExcelWriter(
     synthetic_file,
-    index=False
-)
+    engine="openpyxl"
+) as writer:
+
+    for model_name in MODEL_FEATURES:
+
+        synthetic_datasets[
+            model_name
+        ].to_excel(
+            writer,
+            sheet_name=model_name[:31],
+            index=False
+        )
 
 print(
     f"\nSynthetic data saved to:"
@@ -1116,11 +1270,21 @@ print(
 # XGBOOST MODEL
 # ============================================================
 
-def create_model():
+def create_model(features):
+
+    # Constrain every feature to have a nondecreasing
+    # relationship with its predicted cost.
+    #
+    #  1 = Increasing or constant
+    #  0 = Unconstrained
+    # -1 = Decreasing or constant
+
+    monotonic_constraints = tuple(
+        1 for _ in features
+    )
 
     return XGBRegressor(
-        objective=
-        "reg:squarederror",
+        objective="reg:squarederror",
         n_estimators=300,
         learning_rate=0.05,
         max_depth=5,
@@ -1130,7 +1294,10 @@ def create_model():
         gamma=0.1,
         reg_alpha=0.1,
         reg_lambda=1.0,
-        random_state=RANDOM_STATE
+        random_state=RANDOM_STATE,
+
+        # Apply the constraints
+        monotone_constraints=monotonic_constraints
     )
 
 # ============================================================
@@ -1157,13 +1324,12 @@ def evaluate_model(
     ].copy()
 
     # --------------------------------------------------------
-    # Remove rows without target
+    # Remove rows missing ANY required feature or target.
+    # This is component-specific.
     # --------------------------------------------------------
 
     data = data.dropna(
-        subset=[
-            target
-        ]
+        subset=features + [target]
     )
 
     X = data[
@@ -1215,7 +1381,7 @@ def evaluate_model(
             test_index
         ]
 
-        model = create_model()
+        model = create_model(features)
 
         model.fit(
             X_train,
@@ -1296,13 +1462,12 @@ def train_final_model(
     ].copy()
 
     # --------------------------------------------------------
-    # Target must exist
+    # Remove rows missing ANY required feature or target.
+    # This is component-specific.
     # --------------------------------------------------------
 
     data = data.dropna(
-        subset=[
-            target
-        ]
+        subset=features + [target]
     )
 
     X = data[
@@ -1313,7 +1478,7 @@ def train_final_model(
         target
     ]
 
-    model = create_model()
+    model = create_model(features)
 
     model.fit(
         X,
@@ -1397,7 +1562,7 @@ for model_name in MODEL_FEATURES:
 
     result = evaluate_model(
         model_name,
-        combined_df
+        combined_datasets[model_name]
     )
 
     result[
@@ -1431,7 +1596,7 @@ print("=" * 70)
 for model_name in MODEL_FEATURES:
     train_final_model(
         model_name,
-        combined_df
+        combined_datasets[model_name]
     )
 
 # ============================================================
