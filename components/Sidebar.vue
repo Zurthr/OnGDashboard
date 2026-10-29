@@ -12,7 +12,7 @@
 
       <!-- ── PLATFORM ──────────────────────────────── -->
       <div class="nav-section">
-        <span class="nav-section-label">Platform</span>
+        <span class="nav-section-label">Forecast</span>
 
         <!-- Dashboard -->
         <!-- <NuxtLink to="/" class="nav-item" :class="{ 'nav-item--active': route.path === '/' }">
@@ -20,40 +20,44 @@
           <span class="nav-label">Dashboard</span>
         </NuxtLink> -->
 
-        <!-- [OLD] Forecast -->
-        <NuxtLink to="/forecast" class="nav-item" :class="{ 'nav-item--active': route.path === '/forecast' }">
+        <!-- <NuxtLink to="/forecast" class="nav-item" :class="{ 'nav-item--active': route.path === '/forecast' }">
           <img src="assets\icons\forecast.png" alt="Forecast" class="nav-icon">
           <span class="nav-label nav-label--muted">[OLD] Forecast</span>
-        </NuxtLink>
+        </NuxtLink> -->
 
         <!-- Forecast -->
         <NuxtLink to="/platform" class="nav-item" :class="{ 'nav-item--active': route.path === '/platform' }">
           <img src="assets\icons\forecast.png" alt="Forecast" class="nav-icon">
-          <span class="nav-label">Forecast</span>
+          <span class="nav-label">Platform</span>
+        </NuxtLink>
+                <NuxtLink to="/fpso" class="nav-item" :class="{ 'nav-item--active': route.path === '/fpso' }">
+          <img src="assets\icons\forecast.png" alt="Forecast" class="nav-icon">
+          <span class="nav-label">FPSO/FSO</span>
+        </NuxtLink>
+                <NuxtLink to="/subsea" class="nav-item" :class="{ 'nav-item--active': route.path === '/subsea' }">
+          <img src="assets\icons\forecast.png" alt="Forecast" class="nav-icon">
+          <span class="nav-label">Subsea</span>
         </NuxtLink>
       </div>
 
-      <!-- ── FPSO / FSO ─────────────────────────────── -->
+      <!-- ── FPSO / FSO ───────────────────────────────
       <div class="nav-section">
         <span class="nav-section-label">FPSO / FSO</span>
 
-        <!-- Forecast -->
         <NuxtLink to="/fpso" class="nav-item" :class="{ 'nav-item--active': route.path === '/fpso' }">
           <img src="assets\icons\forecast.png" alt="Forecast" class="nav-icon">
           <span class="nav-label">Forecast</span>
         </NuxtLink>
       </div>
 
-      <!-- ── SUBSEA ──────────────────────────────────── -->
       <div class="nav-section">
         <span class="nav-section-label">Subsea</span>
 
-        <!-- Forecast -->
         <NuxtLink to="/subsea" class="nav-item" :class="{ 'nav-item--active': route.path === '/subsea' }">
           <img src="assets\icons\forecast.png" alt="Forecast" class="nav-icon">
           <span class="nav-label">Forecast</span>
         </NuxtLink>
-      </div>
+      </div> -->
 
       <!-- ── GENERAL ───────────────────────────────── -->
       <!-- <div class="nav-section">

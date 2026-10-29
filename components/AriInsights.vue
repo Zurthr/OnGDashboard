@@ -10,7 +10,7 @@
     <!-- Insights Content Box -->
     <div class="ari-content">
       <!-- Loading Skeleton State -->
-      <div v-if="loading" class="skeleton-wrapper">
+      <div v-if="isLoading" class="skeleton-wrapper">
         <div class="skeleton-bar line-1"></div>
         <div class="skeleton-bar line-2"></div>
         <div class="skeleton-bar line-3"></div>
@@ -22,25 +22,87 @@
         <span>{{ error }}</span>
       </div>
 
-      <!-- Loaded Insights State -->
-      <div v-else-if="insights" class="insights-text">
-        {{ insights }}
-      </div>
+      <!-- Loaded Insights State (Deterministic Non-LLM Rule-Based) -->
+      <div v-else-if="displayInsights" class="insights-text" v-html="formattedInsights"></div>
 
       <!-- Initial / Empty State -->
       <div v-else class="empty-state">
-        <p>No insights generated yet. CAPEX analysis is idle.</p>
+        <p>No comparison inputs provided yet. CAPEX analysis is idle.</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  insights: string | null
-  loading: boolean
-  error: string | null
-}>()
+import { computed, inject } from 'vue'
+import { useRoute } from 'vue-router'
+import { usePlatformVedaStore } from '~/stores/platformVedaStore'
+import { useSubseaVedaStore } from '~/stores/subseaVedaStore'
+import { useFpsoVedaStore } from '~/stores/fpsoVedaStore'
+import { useVedaStore } from '~/stores/vedaStore'
+import { generateRuleBasedNarrative } from '~/composables/useRuleBasedNarrative'
+
+const props = withDefaults(defineProps<{
+  insights?: string | null
+  loading?: boolean
+  error?: string | null
+}>(), {
+  insights: null,
+  loading: false,
+  error: null
+})
+
+const route = useRoute()
+
+// Resolve active store (either injected via provide('forecastStore', store) or by current route)
+const store = computed(() => {
+  const injectedStore = inject<any>('forecastStore', null)
+  if (injectedStore) return injectedStore
+  if (route.path.startsWith('/subsea')) return useSubseaVedaStore()
+  if (route.path.startsWith('/fpso')) return useFpsoVedaStore()
+  if (route.path.startsWith('/platform')) return usePlatformVedaStore()
+  return useVedaStore()
+})
+
+const isLoading = computed(() => {
+  return props.loading || store.value?.loadingDetails || false
+})
+
+const ruleBasedResult = computed(() => {
+  const s = store.value
+  if (!s || !s.componentFindings || s.componentFindings.length === 0) return null
+
+  // Check if comparationInputs exist and are populated
+  const comparationInputs = s.comparationInputs || {}
+  const components = s.componentFindings.map((c: any) => {
+    const rawVal = comparationInputs[c.costType]
+    const compVal = (rawVal !== undefined && rawVal !== null && rawVal !== '')
+      ? Number(rawVal)
+      : (c.forecast ?? c.baseline ?? 0)
+
+    return {
+      costType: c.costType,
+      baseline: c.baseline || 0,
+      compVal
+    }
+  })
+
+  return generateRuleBasedNarrative(components, s.summaryFindings?.baselineTotal)
+})
+
+const displayInsights = computed(() => {
+  if (props.insights) return props.insights
+  return ruleBasedResult.value?.plainText || null
+})
+
+const formattedInsights = computed(() => {
+  if (props.insights) {
+    return props.insights
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n\n/g, '<br><br>')
+  }
+  return ruleBasedResult.value?.formattedHtml || ''
+})
 </script>
 
 <style scoped>

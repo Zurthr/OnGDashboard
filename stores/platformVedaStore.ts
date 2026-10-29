@@ -251,62 +251,30 @@ export const usePlatformVedaStore = defineStore('platformVedaStore', {
       }
     },
 
-    // Generate verified cost review narrative via ChatGPT proxy
-    async generateNarrative() {
-      if (!this.computedJson) return
-
-      this.loadingNarrative = true
-      this.narrativeError = null
-      this.narrativeVerified = false
-      this.narrative = null
-
-      let narrativeSuccess = false
-
-      try {
-        const response = await $fetch<{
-          success: boolean
-          verified: boolean
-          narrative?: string
-          message?: string
-        }>('/api/generate-narrative', {
-          method: 'POST',
-          timeout: 15000,
-          body: {
-            vedaJson: this.computedJson
-          }
-        })
-
-        if (response.success && response.verified) {
-          this.narrative = response.narrative || ''
-          this.narrativeVerified = true
-          narrativeSuccess = true
-        } else {
-          console.warn('Narrative generation returned unsuccessful or failed verification. Falling back to insights.')
-        }
-      } catch (err: any) {
-        console.error('Error or timeout generating narrative:', err)
-      }
-
-      // Fallback if narrative generation failed or timed out
-      if (!narrativeSuccess) {
-        try {
-          console.log('Using generate-insights fallback...')
-          const fallbackResponse = await $fetch<{ insights: string }>('/api/generate-insights', {
-            method: 'POST',
-            body: {
-              summaryFindings: this.summaryFindings,
-              componentFindings: this.componentFindings
-            }
-          })
-          this.narrative = fallbackResponse.insights || ''
-          this.narrativeVerified = false
-        } catch (fallbackErr: any) {
-          this.narrativeError = fallbackErr?.message || 'Failed to generate analysis'
-          console.error('Narrative fallback to insights failed:', fallbackErr)
-        }
-      }
+    // Generate verified cost review narrative via deterministic rules (non-LLM)
+    generateNarrative() {
+      if (!this.componentFindings || this.componentFindings.length === 0) return
 
       this.loadingNarrative = false
+      this.narrativeError = null
+
+      const comparationInputs = this.comparationInputs || {}
+      const components = this.componentFindings.map(c => {
+        const rawVal = comparationInputs[c.costType]
+        const compVal = (rawVal !== undefined && rawVal !== null && rawVal !== '')
+          ? Number(rawVal)
+          : (c.forecast ?? c.baseline ?? 0)
+
+        return {
+          costType: c.costType,
+          baseline: c.baseline || 0,
+          compVal
+        }
+      })
+
+      const result = generateRuleBasedNarrative(components, this.summaryFindings?.baselineTotal)
+      this.narrative = result.plainText
+      this.narrativeVerified = true
     },
     setSelectedKkks(kkks: string | null) {
       this.selectedKkks = kkks

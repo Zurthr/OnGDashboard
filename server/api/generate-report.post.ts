@@ -113,7 +113,7 @@ export default defineEventHandler(async (event) => {
     insights = null,
     narrative = null,
     useNarrative = true,
-    selectedVisualizations = ['location', 'variance', 'treemap'],
+    selectedVisualizations = ['variance', 'treemap'],
     scenarioParams = {} as ScenarioParams,
   } = body || {}
 
@@ -124,7 +124,6 @@ export default defineEventHandler(async (event) => {
   const timestamp = nowWIB()
 
   // ── Puppeteer Live Capture ─────────────────────────────────────────────────
-  let locationBase64: string | null = null
   let varianceBase64: string | null = null
   let treemapBase64: string | null = null
 
@@ -145,27 +144,12 @@ export default defineEventHandler(async (event) => {
     // Determine host origin dynamically using robust H3 helpers
     const host = getRequestHost(event)
     const protocol = getRequestProtocol(event)
-    const locName = scenarioParams.projectLocation || 'Natuna Sea'
-    const targetUrl = `${protocol}://${host}/forecast?scenarioId=${scenarioId ?? ''}&location=${encodeURIComponent(locName)}`
+    const targetUrl = `${protocol}://${host}/forecast?scenarioId=${scenarioId ?? ''}`
 
-    console.log('Puppeteer navigating to pre-render charts & map at:', targetUrl)
+    console.log('Puppeteer navigating to pre-render charts at:', targetUrl)
     await page.goto(targetUrl, { waitUntil: 'networkidle2' })
 
-    // Wait for the Leaflet map viewport and custom marker to be rendered
-    await page.waitForSelector('.leaflet-map-viewport', { timeout: 15000 }).catch(() => { })
-    await page.waitForSelector('.custom-leaflet-marker', { timeout: 8000 }).catch(() => { })
-    // Wait for Leaflet tiles to load fully and map center transition to finish
-    await new Promise(resolve => setTimeout(resolve, 2000))
-
-    // 1. Capture Location Map (Default Tab)
-    if (selectedVisualizations.includes('location')) {
-      const mapElement = await page.$('.leaflet-map-viewport')
-      if (mapElement) {
-        locationBase64 = await mapElement.screenshot({ encoding: 'base64' })
-      }
-    }
-
-    // 2. Capture Variance Charts (Switch Tab)
+    // 1. Capture Variance Charts
     if (selectedVisualizations.includes('variance')) {
       try {
         // Click the Variance tab button
@@ -191,7 +175,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 3. Capture Treemap Chart (Switch Tab)
+    // 2. Capture Treemap Chart (Switch Tab)
     if (selectedVisualizations.includes('treemap')) {
       try {
         // Click the Treemap tab button
@@ -305,12 +289,6 @@ export default defineEventHandler(async (event) => {
 
   // ── Analytical Visualizations Section ──────────────────────────────────────
   const vizBlocks = [
-    {
-      id: 'location',
-      heading: 'Operation Location',
-      caption: 'Geographic location of the project working area within Indonesia\'s upstream offshore sector.',
-      image: locationBase64,
-    },
     {
       id: 'variance',
       heading: 'Variance Analysis',

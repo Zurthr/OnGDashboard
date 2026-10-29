@@ -11,7 +11,7 @@
       <!-- Content -->
       <div class="ari-content">
         <!-- Loading skeleton -->
-        <div v-if="store.loadingNarrative || store.loadingDetails" class="skeleton-wrapper">
+        <div v-if="store.loadingDetails" class="skeleton-wrapper">
           <div class="skeleton-bar animate-pulse" style="width: 100%; height: 16px;"></div>
           <div class="skeleton-bar animate-pulse" style="width: 97%; height: 16px;"></div>
           <div class="skeleton-bar animate-pulse" style="width: 94%; height: 16px;"></div>

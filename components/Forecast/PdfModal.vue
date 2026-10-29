@@ -155,12 +155,6 @@ const summaryType = ref<'narrative' | 'insights'>('narrative')
 // ── Viz options ───────────────────────────────────────────────────────────
 const vizOptions = [
   {
-    id: 'location',
-    name: 'Location Map',
-    desc: 'Operation site & geo context',
-    icon: 'heroicons:map-pin-20-solid',
-  },
-  {
     id: 'variance',
     name: 'Variance Charts',
     desc: 'Forecast vs baseline breakdown',
@@ -175,7 +169,7 @@ const vizOptions = [
 ]
 
 // All selected by default
-const selected = ref<string[]>(['location', 'variance', 'treemap'])
+const selected = ref<string[]>(['variance', 'treemap'])
 
 const toggleViz = (id: string) => {
   if (selected.value.includes(id)) {
@@ -355,8 +349,8 @@ const generatePdf = async () => {
 /* ── Viz grid ─────────────────────────────────────────────────── */
 .viz-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 
 .viz-card {

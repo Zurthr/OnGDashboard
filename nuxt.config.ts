@@ -3,6 +3,10 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-06-20',
   devtools: { enabled: true },
 
+  experimental: {
+    appManifest: false
+  },
+
   modules: [
     '@pinia/nuxt',
     '@nuxt/icon'
